@@ -1,108 +1,211 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   NEUMORPHIC DESIGN SYSTEM - COMBINED COLORS & FRONTEND CSS INSTRUCTIONS
+   ========================================================================== */
+
+/* 1. COLOR TOKENS & PALETTE SPECIFICATION */
 :root {
-  --bg-base: #EDEBF8;
-  --shadow-light: #FFFFFF;
-  --shadow-dark: #C5C3D8;
-  --shadow-darker: #C9C7DC;
-  --accent-blue: #0A84FF;
-  --text-main: #33364D;
-  --text-muted: #72768F;
-  --accent-hover: #0070E0;
+  /* Light Theme Color Tokens */
+  --light-bg-canvas: #EDEBF8;
+  --light-accent-blue: #007BFF;
+  --light-text-main: #33364D;
+  --light-text-secondary: #7E8299;
+  --light-text-disabled: #B8BAC7;
+  --light-highlight: #FFFFFF;
+  --light-shadow-dark: #C5C3D8;
+  --light-shadow-deep: #D1CFE2;
+
+  /* Active Theme Mapping (Default to Light) */
+  --bg-canvas: var(--light-bg-canvas);
+  --accent-blue: var(--light-accent-blue);
+  --text-main: var(--light-text-main);
+  --text-secondary: var(--light-text-secondary);
+  --text-disabled: var(--light-text-disabled);
+
+  /* Neumorphic Physics Shadows (Light Mode) */
+  --shadow-raised: 8px 8px 16px var(--light-shadow-dark), -8px -8px 16px var(--light-highlight);
+  --shadow-raised-lg: 12px 12px 24px var(--light-shadow-deep), -12px -12px 24px var(--light-highlight);
+  --shadow-pressed: inset 4px 4px 8px var(--light-shadow-dark), inset -4px -4px 8px var(--light-highlight);
+  --shadow-sm: 4px 4px 8px var(--light-shadow-dark), -4px -4px 8px var(--light-highlight);
+  --shadow-inset-sm: inset 2px 2px 4px var(--light-shadow-dark), inset -2px -2px 4px var(--light-highlight);
+}
+
+[data-theme="dark"] {
+  /* Dark Theme Color Tokens */
+  --dark-bg-canvas: #0f1a20;
+  --dark-accent-blue: #00f2e7;
+  --dark-text-main: #D1E5E7;
+  --dark-text-secondary: #8faeb2;
+  --dark-text-disabled: #1b2d35;
+  --dark-highlight: #162831;
+  --dark-shadow-dark: #080e12;
+  --dark-shadow-deep: #050a0d;
+
+  /* Active Theme Mapping (Dark Mode Overrides) */
+  --bg-canvas: var(--dark-bg-canvas);
+  --accent-blue: var(--dark-accent-blue);
+  --text-main: var(--dark-text-main);
+  --text-secondary: var(--dark-text-secondary);
+  --text-disabled: var(--dark-text-disabled);
+
+  /* Neumorphic Physics Shadows (Dark Mode) */
+  --shadow-raised: 8px 8px 16px var(--dark-shadow-dark), -8px -8px 16px var(--dark-highlight);
+  --shadow-raised-lg: 12px 12px 24px var(--dark-shadow-deep), -12px -12px 24px var(--dark-highlight);
+  --shadow-pressed: inset 4px 4px 8px var(--dark-shadow-dark), inset -4px -4px 8px var(--dark-highlight);
+  --shadow-sm: 4px 4px 8px var(--dark-shadow-dark), -4px -4px 8px var(--dark-highlight);
+  --shadow-inset-sm: inset 2px 2px 4px var(--dark-shadow-dark), inset -2px -2px 4px var(--dark-highlight);
+}
+
+/* 2. GLOBAL LAYOUT & RESET RULES */
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
 body {
-  background-color: var(--bg-base);
-  color: var(--text-main);
-  font-family: 'Noto Sans Arabic', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   margin: 0;
   padding: 0;
+  font-family: 'Noto Sans Arabic', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--bg-canvas);
+  color: var(--text-main);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .urdu-title {
   font-family: 'Noto Nastaliq Urdu', serif;
 }
 
-/* Tactile Neumorphic Soft UI Elevations */
+/* 3. ZERO BORDERS RULE & GEOMETRY ARCHITECTURE */
+.neu-card, .neu-btn, .neu-input, .segmented-control, .neu-slider {
+  border: none;
+  background: var(--bg-canvas);
+  border-radius: 16px;
+}
+
+/* 4. COMPONENT STYLING */
+
+/* Neumorphic Extrusions */
 .neu-raised-lg {
-  background: var(--bg-base);
-  box-shadow: 10px 10px 22px var(--shadow-darker), -10px -10px 22px var(--shadow-light);
+  background: var(--bg-canvas);
+  box-shadow: var(--shadow-raised-lg);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
 }
 
 .neu-raised {
-  background: var(--bg-base);
-  box-shadow: 6px 6px 14px var(--shadow-dark), -6px -6px 14px var(--shadow-light);
+  background: var(--bg-canvas);
+  box-shadow: var(--shadow-raised);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
 }
 
 .neu-raised-sm {
-  background: var(--bg-base);
-  box-shadow: 3px 3px 8px var(--shadow-dark), -3px -3px 8px var(--shadow-light);
+  background: var(--bg-canvas);
+  box-shadow: var(--shadow-sm);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* Inset / Sunken / Pressed Soft UI */
+/* Neumorphic Recessed / Pressed / Inset */
 .neu-inset {
-  background: var(--bg-base);
-  box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
+  background: var(--bg-canvas);
+  box-shadow: var(--shadow-pressed);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
 }
 
 .neu-inset-sm {
-  background: var(--bg-base);
-  box-shadow: inset 2px 2px 5px var(--shadow-dark), inset -2px -2px 5px var(--shadow-light);
+  background: var(--bg-canvas);
+  box-shadow: var(--shadow-inset-sm);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* Interactive Tactile Buttons */
+/* Standard Raised Button */
 .neu-btn {
-  background: var(--bg-base);
-  box-shadow: 5px 5px 12px var(--shadow-dark), -5px -5px 12px var(--shadow-light);
-  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--bg-canvas);
+  color: var(--text-main);
+  box-shadow: var(--shadow-raised);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .neu-btn:hover {
-  box-shadow: 3px 3px 7px var(--shadow-dark), -3px -3px 7px var(--shadow-light);
+  color: var(--accent-blue);
   transform: translateY(-1px);
 }
 
-.neu-btn:active, .neu-btn.active {
-  box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
-  transform: translateY(1px);
+.neu-btn:active, .neu-btn.pressed, .neu-btn.active {
+  box-shadow: var(--shadow-pressed);
   color: var(--accent-blue);
+  transform: translateY(1px);
 }
 
-.neu-btn:disabled {
+.neu-btn:disabled, .neu-btn.disabled {
+  color: var(--text-disabled);
   opacity: 0.45;
   cursor: not-allowed;
-  box-shadow: none;
+  box-shadow: var(--shadow-sm);
+  transform: none;
 }
 
-/* Electric Blue Accent Button */
+/* Icon Buttons from Attached CSS */
+.icon-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: var(--bg-canvas);
+  color: var(--text-main);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-raised);
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.icon-btn:hover {
+  color: var(--accent-blue);
+  transform: translateY(-1px);
+}
+
+.icon-btn:active, .icon-btn.active {
+  box-shadow: var(--shadow-pressed);
+  color: var(--accent-blue);
+  transform: translateY(1px);
+}
+
+/* Electric Accent Buttons */
 .neu-btn-accent {
-  background: linear-gradient(135deg, #0A84FF, #0070E0);
+  background: linear-gradient(135deg, var(--accent-blue), #0056b3);
   color: #ffffff;
-  box-shadow: 5px 5px 14px #C0C5DF, -5px -5px 14px var(--shadow-light);
-  transition: all 0.18s ease;
+  box-shadow: var(--shadow-raised);
+  transition: all 0.2s ease;
+}
+
+[data-theme="dark"] .neu-btn-accent {
+  background: linear-gradient(135deg, #00f2e7, #009c95);
+  color: #080e12;
 }
 
 .neu-btn-accent:hover {
-  box-shadow: 3px 3px 8px #A8B2DB, -3px -3px 8px var(--shadow-light);
-  opacity: 0.96;
+  opacity: 0.95;
+  transform: translateY(-1px);
 }
 
 .neu-btn-accent:active {
-  box-shadow: inset 3px 3px 6px rgba(0, 0, 0, 0.25), inset -3px -3px 6px rgba(255, 255, 255, 0.35);
+  box-shadow: var(--shadow-pressed);
   transform: translateY(1px);
 }
 
-/* Inset Form Inputs */
+/* Form Inputs */
 .neu-input {
-  background: var(--bg-base);
-  box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
-  border: none;
-  outline: none;
+  width: 100%;
+  background: var(--bg-canvas);
+  box-shadow: var(--shadow-pressed);
   color: var(--text-main);
+  outline: none;
+  border: none;
+  transition: background 0.3s ease, box-shadow 0.3s ease, color 0.3s ease;
 }
 
 .neu-input:focus {
-  box-shadow: inset 3px 3px 6px #B8B5CE, inset -3px -3px 6px var(--shadow-light), 0 0 0 2px rgba(10, 132, 255, 0.4);
+  box-shadow: var(--shadow-pressed), 0 0 0 2px var(--accent-blue);
 }
 
 /* Custom Soft Checkbox */
@@ -111,8 +214,8 @@ body {
   width: 18px;
   height: 18px;
   border-radius: 6px;
-  background: var(--bg-base);
-  box-shadow: inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light);
+  background: var(--bg-canvas);
+  box-shadow: var(--shadow-inset-sm);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -121,29 +224,37 @@ body {
 }
 
 .neu-checkbox:checked {
-  background: #0A84FF;
-  box-shadow: 2px 2px 5px var(--shadow-dark), -2px -2px 5px var(--shadow-light);
+  background: var(--accent-blue);
+  box-shadow: var(--shadow-sm);
 }
 
 .neu-checkbox:checked::after {
   content: '✓';
-  color: white;
+  color: #ffffff;
   font-size: 11px;
   font-weight: bold;
   position: absolute;
 }
 
-/* Table Hover */
+[data-theme="dark"] .neu-checkbox:checked::after {
+  color: #080e12;
+}
+
+/* Table Hover & Demanded Highlight */
 .neu-table-row {
   transition: background 0.15s ease;
 }
 
 .neu-table-row:hover {
-  background: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .neu-table-row.demanded {
-  background: rgba(10, 132, 255, 0.06);
+  background: rgba(0, 123, 255, 0.08);
+}
+
+[data-theme="dark"] .neu-table-row.demanded {
+  background: rgba(0, 242, 231, 0.08);
 }
 
 /* Print and PDF Styles */
@@ -153,6 +264,7 @@ body {
   }
   body {
     background: #ffffff !important;
+    color: #000000 !important;
     padding: 0 !important;
   }
   .neu-raised, .neu-raised-lg, .neu-raised-sm, .neu-inset, .neu-inset-sm {
@@ -180,15 +292,18 @@ body {
   }
 }
 
-/* Custom soft scrollbars */
+/* Custom Soft Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--bg-base);
+  background: var(--bg-canvas);
 }
 ::-webkit-scrollbar-thumb {
-  background: #C4C2D6;
+  background: var(--light-shadow-dark);
   border-radius: 9999px;
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: #162831;
 }

@@ -1,6 +1,5 @@
 import React from 'react';
 import { 
-  Menu, 
   ChevronRight, 
   ChevronLeft, 
   TableProperties, 
@@ -9,8 +8,7 @@ import {
   Store, 
   Warehouse, 
   PieChart,
-  ShieldCheck,
-  UserCheck
+  ShieldCheck
 } from 'lucide-react';
 import { NavRoute, UserRole, Language } from '../types';
 
@@ -47,7 +45,7 @@ export const TactileSidebar: React.FC<TactileSidebarProps> = ({
 
   // Map icon strings to Lucide components
   const renderIcon = (iconName: string, active: boolean) => {
-    const cls = `w-4 h-4 transition-colors ${active ? 'text-[#0A84FF]' : 'text-[#72768F]'}`;
+    const cls = `w-4 h-4 transition-colors ${active ? 'text-[var(--accent-blue)]' : 'text-[var(--text-secondary)]'}`;
     switch (iconName) {
       case 'fa-table-list':
         return <TableProperties className={cls} />;
@@ -91,18 +89,18 @@ export const TactileSidebar: React.FC<TactileSidebarProps> = ({
     >
       {/* Sidebar Header & Brand */}
       <div>
-        <div className="flex items-center justify-between pb-4 border-b border-[#D8D5EA]">
+        <div className="flex items-center justify-between pb-4 border-b border-black/5 dark:border-white/10">
           {!isCollapsed && (
             <div className="flex items-center gap-2.5 overflow-hidden">
-              <div className="w-9 h-9 rounded-2xl neu-inset-sm flex items-center justify-center text-[#0A84FF] font-bold shrink-0">
+              <div className="w-9 h-9 rounded-2xl neu-inset-sm flex items-center justify-center text-[var(--accent-blue)] font-bold shrink-0">
                 <span className="text-sm font-extrabold tracking-tight">O</span>
-                <span className="text-[10px] text-[#0A84FF] font-extrabold -ml-0.5">LA</span>
+                <span className="text-[10px] text-[var(--accent-blue)] font-extrabold -ml-0.5">LA</span>
               </div>
               <div className="truncate">
-                <h2 className="text-sm font-extrabold text-[#2C2E42] tracking-tight">
+                <h2 className="text-sm font-extrabold text-[var(--text-main)] tracking-tight">
                   OrderLA BOS
                 </h2>
-                <p className="text-[10px] text-[#72768F] font-semibold truncate">
+                <p className="text-[10px] text-[var(--text-secondary)] font-semibold truncate">
                   {language === 'ur' ? 'ہول سیل بزنس سسٹم' : 'Wholesale Operating OS'}
                 </p>
               </div>
@@ -110,14 +108,14 @@ export const TactileSidebar: React.FC<TactileSidebarProps> = ({
           )}
 
           {isCollapsed && (
-            <div className="mx-auto w-9 h-9 rounded-2xl neu-inset-sm flex items-center justify-center text-[#0A84FF] font-extrabold text-xs">
+            <div className="mx-auto w-9 h-9 rounded-2xl neu-inset-sm flex items-center justify-center text-[var(--accent-blue)] font-extrabold text-xs">
               OLA
             </div>
           )}
 
           <button
             onClick={onToggleCollapse}
-            className="w-8 h-8 rounded-xl neu-btn flex items-center justify-center text-[#72768F] hover:text-[#0A84FF] transition"
+            className="w-8 h-8 rounded-xl neu-btn flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--accent-blue)] transition cursor-pointer"
             title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
           >
             {isCollapsed ? (
@@ -131,8 +129,8 @@ export const TactileSidebar: React.FC<TactileSidebarProps> = ({
         {/* Role Indicator Banner */}
         {!isCollapsed && (
           <div className="mt-3 p-2.5 rounded-2xl neu-inset-sm flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-xs text-[#33364D] font-semibold">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#0A84FF]" />
+            <div className="flex items-center gap-1.5 text-xs text-[var(--text-main)] font-semibold">
+              <ShieldCheck className="w-3.5 h-3.5 text-[var(--accent-blue)]" />
               <span className="text-[11px]">
                 {language === 'ur' ? 'کردار / اجازت:' : 'Role:'}
               </span>
@@ -140,7 +138,7 @@ export const TactileSidebar: React.FC<TactileSidebarProps> = ({
             <select
               value={userRole}
               onChange={(e) => onChangeRole(e.target.value as UserRole)}
-              className="text-[10px] font-bold bg-[#EDEBF8] text-[#0A84FF] px-2 py-1 rounded-xl neu-inset-sm border-none outline-hidden cursor-pointer"
+              className="text-[10px] font-bold bg-[var(--bg-canvas)] text-[var(--accent-blue)] px-2 py-1 rounded-xl neu-inset-sm border-none outline-hidden cursor-pointer"
             >
               <option value="admin">{language === 'ur' ? 'منتظم (Admin)' : 'Admin'}</option>
               <option value="purchaser">{language === 'ur' ? 'خریدار (Buyer)' : 'Purchaser'}</option>
@@ -166,8 +164,8 @@ export const TactileSidebar: React.FC<TactileSidebarProps> = ({
                   isCollapsed ? 'justify-center p-3' : 'justify-between px-3.5 py-2.5'
                 } ${
                   isActive
-                    ? 'neu-inset text-[#0A84FF] font-bold'
-                    : 'neu-btn text-[#33364D] font-semibold hover:text-[#0A84FF]'
+                    ? 'neu-inset text-[var(--accent-blue)] font-bold'
+                    : 'neu-btn text-[var(--text-main)] font-semibold hover:text-[var(--accent-blue)]'
                 } ${!isPermitted ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
               >
                 <div className="flex items-center gap-2.5 truncate">
@@ -181,7 +179,7 @@ export const TactileSidebar: React.FC<TactileSidebarProps> = ({
 
                 {!isCollapsed && badgeValue && (
                   <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
-                    isActive ? 'neu-inset-sm text-[#0A84FF] font-extrabold' : 'neu-inset-sm text-[#72768F]'
+                    isActive ? 'neu-inset-sm text-[var(--accent-blue)] font-extrabold' : 'neu-inset-sm text-[var(--text-secondary)]'
                   }`}>
                     {badgeValue}
                   </span>
@@ -193,9 +191,9 @@ export const TactileSidebar: React.FC<TactileSidebarProps> = ({
       </div>
 
       {/* Bottom User Pill */}
-      <div className="pt-3 border-t border-[#D8D5EA]">
+      <div className="pt-3 border-t border-black/5 dark:border-white/10">
         {!isCollapsed ? (
-          <div className="flex items-center justify-between text-[11px] text-[#72768F] font-medium px-1">
+          <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)] font-medium px-1">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               <span>{language === 'ur' ? 'آن لائن آڈٹ موڈ' : 'Live Audit Mode'}</span>

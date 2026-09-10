@@ -7,9 +7,9 @@ import {
   Star, 
   AlertTriangle, 
   ChevronDown, 
-  Info,
-  ArrowUpDown,
-  ListOrdered
+  Info, 
+  ArrowUpDown, 
+  ListOrdered 
 } from 'lucide-react';
 import { FilterType, SortKey, SortDirection, Language } from '../types';
 
@@ -95,16 +95,16 @@ export const FilterSortBar: React.FC<FilterSortBarProps> = ({
                 setIsFilterOpen(!isFilterOpen);
                 setIsSortOpen(false);
               }}
-              className="w-full inline-flex items-center justify-between sm:justify-start gap-2 px-3.5 py-2.5 rounded-2xl neu-btn text-xs font-bold text-[#33364D] select-none cursor-pointer"
+              className="w-full inline-flex items-center justify-between sm:justify-start gap-2 px-3.5 py-2.5 rounded-2xl neu-btn text-xs font-bold text-[var(--text-main)] select-none cursor-pointer"
             >
               <div className="flex items-center gap-1.5 truncate">
-                <Filter className="w-3.5 h-3.5 text-[#0A84FF]" />
+                <Filter className="w-3.5 h-3.5 text-[var(--accent-blue)]" />
                 <span>{isUrdu ? 'فلٹر:' : 'Filter:'}</span>
-                <span className="text-[#0A84FF] font-semibold truncate">
+                <span className="text-[var(--accent-blue)] font-semibold truncate">
                   {isUrdu ? filterLabels[filter].ur : filterLabels[filter].en}
                 </span>
               </div>
-              <ChevronDown className="w-3 h-3 text-[#72768F]" />
+              <ChevronDown className="w-3 h-3 text-[var(--text-secondary)]" />
             </button>
 
             {isFilterOpen && (
@@ -114,10 +114,10 @@ export const FilterSortBar: React.FC<FilterSortBarProps> = ({
                     onSelectFilter('all');
                     setIsFilterOpen(false);
                   }}
-                  className="w-full text-right px-3 py-2 rounded-xl neu-btn text-[#33364D] flex items-center justify-between cursor-pointer"
+                  className="w-full text-right px-3 py-2 rounded-xl neu-btn text-[var(--text-main)] flex items-center justify-between cursor-pointer"
                 >
                   <span>{isUrdu ? 'سبھی آئٹمز (تمام اشیاء)' : 'All Items'}</span>
-                  <span className="text-[10px] neu-inset-sm px-2 py-0.5 rounded-full text-[#0A84FF]">
+                  <span className="text-[10px] neu-inset-sm px-2 py-0.5 rounded-full text-[var(--accent-blue)]">
                     {counts.all}
                   </span>
                 </button>
@@ -127,13 +127,13 @@ export const FilterSortBar: React.FC<FilterSortBarProps> = ({
                     onSelectFilter('demand');
                     setIsFilterOpen(false);
                   }}
-                  className="w-full text-right px-3 py-2 rounded-xl neu-btn text-[#33364D] flex items-center justify-between cursor-pointer"
+                  className="w-full text-right px-3 py-2 rounded-xl neu-btn text-[var(--text-main)] flex items-center justify-between cursor-pointer"
                 >
                   <span className="flex items-center gap-1.5">
                     <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
                     <span>{isUrdu ? 'صرف ڈیمانڈ والے (*)' : 'Demanded Only (*)'}</span>
                   </span>
-                  <span className="text-[10px] neu-inset-sm px-2 py-0.5 rounded-full text-amber-600 font-bold">
+                  <span className="text-[10px] neu-inset-sm px-2 py-0.5 rounded-full text-amber-500 font-bold">
                     {counts.demand}
                   </span>
                 </button>
@@ -143,7 +143,7 @@ export const FilterSortBar: React.FC<FilterSortBarProps> = ({
                     onSelectFilter('lowstock');
                     setIsFilterOpen(false);
                   }}
-                  className="w-full text-right px-3 py-2 rounded-xl neu-btn text-[#33364D] flex items-center justify-between cursor-pointer"
+                  className="w-full text-right px-3 py-2 rounded-xl neu-btn text-[var(--text-main)] flex items-center justify-between cursor-pointer"
                 >
                   <span className="flex items-center gap-1.5 text-rose-500 font-semibold">
                     <AlertTriangle className="w-3 h-3" />
@@ -159,10 +159,10 @@ export const FilterSortBar: React.FC<FilterSortBarProps> = ({
                     onSelectFilter('shalmi');
                     setIsFilterOpen(false);
                   }}
-                  className="w-full text-right px-3 py-2 rounded-xl neu-btn text-[#33364D] flex items-center justify-between cursor-pointer"
+                  className="w-full text-right px-3 py-2 rounded-xl neu-btn text-[var(--text-main)] flex items-center justify-between cursor-pointer"
                 >
                   <span>{isUrdu ? 'شالمی ہول سیل مارکیٹ' : 'Shalmi Wholesale'}</span>
-                  <span className="text-[10px] neu-inset-sm px-2 py-0.5 rounded-full text-[#72768F]">
+                  <span className="text-[10px] neu-inset-sm px-2 py-0.5 rounded-full text-[var(--text-secondary)]">
                     {counts.shalmi}
                   </span>
                 </button>
@@ -172,10 +172,10 @@ export const FilterSortBar: React.FC<FilterSortBarProps> = ({
                     onSelectFilter('kashif');
                     setIsFilterOpen(false);
                   }}
-                  className="w-full text-right px-3 py-2 rounded-xl neu-btn text-[#33364D] flex items-center justify-between cursor-pointer"
+                  className="w-full text-right px-3 py-2 rounded-xl neu-btn text-[var(--text-main)] flex items-center justify-between cursor-pointer"
                 >
                   <span>{isUrdu ? 'کاشف صاحب ہول سیل' : 'Kashif Wholesale'}</span>
-                  <span className="text-[10px] neu-inset-sm px-2 py-0.5 rounded-full text-[#72768F]">
+                  <span className="text-[10px] neu-inset-sm px-2 py-0.5 rounded-full text-[var(--text-secondary)]">
                     {counts.kashif}
                   </span>
                 </button>
@@ -190,16 +190,16 @@ export const FilterSortBar: React.FC<FilterSortBarProps> = ({
                 setIsSortOpen(!isSortOpen);
                 setIsFilterOpen(false);
               }}
-              className="w-full inline-flex items-center justify-between sm:justify-start gap-2 px-3.5 py-2.5 rounded-2xl neu-btn text-xs font-bold text-[#33364D] select-none cursor-pointer"
+              className="w-full inline-flex items-center justify-between sm:justify-start gap-2 px-3.5 py-2.5 rounded-2xl neu-btn text-xs font-bold text-[var(--text-main)] select-none cursor-pointer"
             >
               <div className="flex items-center gap-1.5 truncate">
-                <ArrowDownWideNarrow className="w-3.5 h-3.5 text-[#0A84FF]" />
+                <ArrowDownWideNarrow className="w-3.5 h-3.5 text-[var(--accent-blue)]" />
                 <span>{isUrdu ? 'ترتیب:' : 'Sort:'}</span>
-                <span className="text-[#0A84FF] font-semibold truncate max-w-[120px] sm:max-w-[160px]">
+                <span className="text-[var(--accent-blue)] font-semibold truncate max-w-[120px] sm:max-w-[160px]">
                   {getSortLabel()}
                 </span>
               </div>
-              <ChevronDown className="w-3 h-3 text-[#72768F]" />
+              <ChevronDown className="w-3 h-3 text-[var(--text-secondary)]" />
             </button>
 
             {isSortOpen && (
@@ -209,10 +209,10 @@ export const FilterSortBar: React.FC<FilterSortBarProps> = ({
                     onSelectSort('id', 'asc');
                     setIsSortOpen(false);
                   }}
-                  className="w-full text-right px-3 py-2 rounded-xl neu-btn text-[#33364D] flex items-center justify-between cursor-pointer"
+                  className="w-full text-right px-3 py-2 rounded-xl neu-btn text-[var(--text-main)] flex items-center justify-between cursor-pointer"
                 >
                   <span>{isUrdu ? 'اصل نمبر شمار (1 تا 87)' : 'Original ID (1-87)'}</span>
-                  <ListOrdered className="w-3 h-3 text-[#72768F]" />
+                  <ListOrdered className="w-3 h-3 text-[var(--text-secondary)]" />
                 </button>
 
                 <button
@@ -220,7 +220,7 @@ export const FilterSortBar: React.FC<FilterSortBarProps> = ({
                     onSelectSort('demand', 'desc');
                     setIsSortOpen(false);
                   }}
-                  className="w-full text-right px-3 py-2 rounded-xl neu-btn text-[#33364D] flex items-center justify-between cursor-pointer"
+                  className="w-full text-right px-3 py-2 rounded-xl neu-btn text-[var(--text-main)] flex items-center justify-between cursor-pointer"
                 >
                   <span>{isUrdu ? 'ڈیمانڈ (زیادہ مانگ پہلے)' : 'Demand (Highest First)'}</span>
                   <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
@@ -231,7 +231,7 @@ export const FilterSortBar: React.FC<FilterSortBarProps> = ({
                     onSelectSort('stock', 'asc');
                     setIsSortOpen(false);
                   }}
-                  className="w-full text-right px-3 py-2 rounded-xl neu-btn text-[#33364D] flex items-center justify-between cursor-pointer"
+                  className="w-full text-right px-3 py-2 rounded-xl neu-btn text-[var(--text-main)] flex items-center justify-between cursor-pointer"
                 >
                   <span>{isUrdu ? 'اسٹاک (ختم ہونے والا پہلے)' : 'Stock (Lowest First)'}</span>
                   <AlertTriangle className="w-3 h-3 text-rose-500" />
@@ -242,10 +242,10 @@ export const FilterSortBar: React.FC<FilterSortBarProps> = ({
                     onSelectSort('cost', 'desc');
                     setIsSortOpen(false);
                   }}
-                  className="w-full text-right px-3 py-2 rounded-xl neu-btn text-[#33364D] flex items-center justify-between cursor-pointer"
+                  className="w-full text-right px-3 py-2 rounded-xl neu-btn text-[var(--text-main)] flex items-center justify-between cursor-pointer"
                 >
                   <span>{isUrdu ? 'بجٹ رقم (زیادہ لاگت پہلے)' : 'Projected Cost (Highest)'}</span>
-                  <span className="text-[10px] text-emerald-600 font-bold">PKR</span>
+                  <span className="text-[10px] text-emerald-500 font-bold">PKR</span>
                 </button>
 
                 <button
@@ -253,10 +253,10 @@ export const FilterSortBar: React.FC<FilterSortBarProps> = ({
                     onSelectSort('rate', 'desc');
                     setIsSortOpen(false);
                   }}
-                  className="w-full text-right px-3 py-2 rounded-xl neu-btn text-[#33364D] flex items-center justify-between cursor-pointer"
+                  className="w-full text-right px-3 py-2 rounded-xl neu-btn text-[var(--text-main)] flex items-center justify-between cursor-pointer"
                 >
                   <span>{isUrdu ? 'بنیادی ریٹ (مہنگے سے سستا)' : 'Rate (High to Low)'}</span>
-                  <ArrowUpDown className="w-3 h-3 text-[#72768F]" />
+                  <ArrowUpDown className="w-3 h-3 text-[var(--text-secondary)]" />
                 </button>
 
                 <button
@@ -264,10 +264,10 @@ export const FilterSortBar: React.FC<FilterSortBarProps> = ({
                     onSelectSort('name', 'asc');
                     setIsSortOpen(false);
                   }}
-                  className="w-full text-right px-3 py-2 rounded-xl neu-btn text-[#33364D] flex items-center justify-between cursor-pointer"
+                  className="w-full text-right px-3 py-2 rounded-xl neu-btn text-[var(--text-main)] flex items-center justify-between cursor-pointer"
                 >
                   <span>{isUrdu ? 'نام آئٹم (حروفِ تہجی الف تا ے)' : 'Item Name (A to Z)'}</span>
-                  <span className="text-[10px] text-[#72768F]">A-Z</span>
+                  <span className="text-[10px] text-[var(--text-secondary)]">A-Z</span>
                 </button>
               </div>
             )}
@@ -276,7 +276,7 @@ export const FilterSortBar: React.FC<FilterSortBarProps> = ({
           {/* Reset Button */}
           <button
             onClick={onReset}
-            className="p-2.5 rounded-2xl neu-btn text-[#72768F] hover:text-[#0A84FF] select-none cursor-pointer"
+            className="p-2.5 rounded-2xl neu-btn text-[var(--text-secondary)] hover:text-[var(--accent-blue)] select-none cursor-pointer"
             title={isUrdu ? 'ترتیب و فلٹر ری سیٹ کریں' : 'Reset Filters & Sorting'}
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -285,7 +285,7 @@ export const FilterSortBar: React.FC<FilterSortBarProps> = ({
 
         {/* Search Field */}
         <div className="relative w-full md:w-80">
-          <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#72768F] w-3.5 h-3.5" />
+          <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] w-3.5 h-3.5" />
           <input
             type="text"
             value={searchQuery}
@@ -296,7 +296,7 @@ export const FilterSortBar: React.FC<FilterSortBarProps> = ({
           {searchQuery && (
             <button
               onClick={() => onSearchChange('')}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-[#72768F] hover:text-[#2C2E42]"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer"
             >
               ✕
             </button>
@@ -305,13 +305,13 @@ export const FilterSortBar: React.FC<FilterSortBarProps> = ({
       </div>
 
       {/* Quick Info Strip */}
-      <div className="flex items-center justify-between pt-1.5 text-[11px] text-[#72768F] font-medium border-t border-[#D9D6EA]">
+      <div className="flex items-center justify-between pt-1.5 text-[11px] text-[var(--text-secondary)] font-medium border-t border-black/5 dark:border-white/10">
         <div className="flex items-center gap-1.5">
-          <Info className="w-3.5 h-3.5 text-[#0A84FF]" />
+          <Info className="w-3.5 h-3.5 text-[var(--accent-blue)]" />
           <span>
             {isUrdu 
-              ? 'موبائل پر آئٹم کارڈ پر کلک کر کے تمام سیلز ایڈٹ کیے جا سکتے ہیں۔' 
-              : 'Directly edit cells inline. Demand items marked with (*) calculate projected costs.'}
+              ? 'نام، ریٹ اور ڈیمانڈ براہِ راست ایڈٹ کریں۔ کیفیت کے لیے ڈراپ ڈاؤن سے انتخاب کریں۔' 
+              : 'Directly edit Name, Rate and Demand. Select Status from presets dropdown.'}
           </span>
         </div>
         <div className="flex items-center gap-2">

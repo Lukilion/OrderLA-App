@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { WholesaleItem, UserRole, Language, FilterType, SortKey, SortDirection } from './types';
+import { WholesaleItem, UserRole, Language, Theme, FilterType, SortKey, SortDirection, UserAccount } from './types';
 import { DEFAULT_MASTER_ITEMS, NAV_ROUTES } from './data/masterItems';
-import { TactileSidebar } from './components/TactileSidebar';
+import { OrderLaTopNav } from './components/OrderLaTopNav';
 import { TopControlBar } from './components/TopControlBar';
 import { DashboardKpi } from './components/DashboardKpi';
 import { FilterSortBar } from './components/FilterSortBar';
@@ -9,20 +9,55 @@ import { DesktopTableView } from './components/DesktopTableView';
 import { MobileCardView } from './components/MobileCardView';
 import { AddItemModal } from './components/AddItemModal';
 import { ResetConfirmModal } from './components/ResetConfirmModal';
+import { DemandSwiperModal } from './components/DemandSwiperModal';
+import { RoleLoginModal } from './components/RoleLoginModal';
+import { SuperAdminConsoleModal } from './components/SuperAdminConsoleModal';
+import { WhatsAppRecipientModal } from './components/WhatsAppRecipientModal';
+import { AccessDeniedModal } from './components/AccessDeniedModal';
+import { FloatingSwiperButton } from './components/FloatingSwiperButton';
 import { Toast } from './components/Toast';
-import { exportWholesaleExcel, generateWhatsAppOrderText } from './utils/exportHelpers';
+import { exportWholesaleExcel } from './utils/exportHelpers';
+import { getCurrentUser, hasExportPermission, getStoredUsers, setCurrentUser as persistCurrentUser } from './utils/authManager';
 
 export function App() {
-  // Navigation & Role State
+  // Visual Theme State (Light / Dark)
+  const [theme, setTheme] = useState<Theme>(() => {
+    try {
+      const stored = localStorage.getItem('orderla_theme');
+      if (stored === 'dark' || stored === 'light') return stored;
+    } catch {
+      /* ignore */
+    }
+    return 'light';
+  });
+
+  // Apply theme to document element
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    try {
+      localStorage.setItem('orderla_theme', theme);
+    } catch {
+      /* ignore */
+    }
+  }, [theme]);
+
+  // Authenticated User & Role State
+  const [currentUser, setCurrentUserState] = useState<UserAccount>(() => getCurrentUser());
+  const [userRole, setUserRole] = useState<UserRole>(() => currentUser.role);
+
+  // Sync role with currentUser
+  useEffect(() => {
+    setUserRole(currentUser.role);
+  }, [currentUser]);
+
+  // Navigation State
   const [activeRoute, setActiveRoute] = useState<string>('demand-sheet');
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
-  const [userRole, setUserRole] = useState<UserRole>('admin');
   const [language, setLanguage] = useState<Language>('ur');
 
-  // Master Items State (persisted with key used in user template)
+  // Master Items State (persisted with clean default empty stock/demand)
   const [items, setItems] = useState<WholesaleItem[]>(() => {
     try {
-      const stored = localStorage.getItem('mukhtar_ali_custom_items');
+      const stored = localStorage.getItem('wholesale_demand_sheet_items_v2');
       if (stored) {
         return JSON.parse(stored);
       }
@@ -47,7 +82,17 @@ export function App() {
   // Modals & Toast State
   const [isAddItemOpen, setIsAddItemOpen] = useState<boolean>(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState<boolean>(false);
+  const [isSwiperOpen, setIsSwiperOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Role Authentication & Security Modals
+  const [isRoleLoginOpen, setIsRoleLoginOpen] = useState<boolean>(false);
+  const [targetRoleForLogin, setTargetRoleForLogin] = useState<UserRole>('admin');
+  const [isSuperAdminConsoleOpen, setIsSuperAdminConsoleOpen] = useState<boolean>(false);
+  const [isWhatsAppRecipientOpen, setIsWhatsAppRecipientOpen] = useState<boolean>(false);
+  const [whatsAppItemsTarget, setWhatsAppItemsTarget] = useState<WholesaleItem[]>(items);
+  const [isAccessDeniedOpen, setIsAccessDeniedOpen] = useState<boolean>(false);
+  const [deniedPermissionType, setDeniedPermissionType] = useState<'excel' | 'pdf' | 'whatsapp'>('excel');
 
   // Synchronize HTML document dir & lang attribute
   useEffect(() => {
@@ -68,7 +113,7 @@ export function App() {
     (newItems: WholesaleItem[], recordHistory: boolean = true) => {
       setItems(newItems);
       try {
-        localStorage.setItem('mukhtar_ali_custom_items', JSON.stringify(newItems));
+        localStorage.setItem('wholesale_demand_sheet_items_v2', JSON.stringify(newItems));
       } catch (err) {
         console.error('LocalStorage save error', err);
       }
@@ -103,20 +148,22 @@ export function App() {
       const nextData = JSON.parse(historyStack[nextIdx]);
       setHistoryIndex(nextIdx);
       commitItemsChange(nextData, false);
-      showToast(language === 'ur' ? 'عمل دوبارہ لاگو کیا گیا (Redo)!' : 'Action redone!');
+      showToast(language === 'ur' ? 'دوبارہ لاگو کیا گیا (Redo)!' : 'Action redone!');
     }
   }, [historyIndex, historyStack, commitItemsChange, showToast, language]);
 
-  // Keyboard Shortcuts (Ctrl+Z / Ctrl+Y)
+  // Global Keyboard Shortcuts for Undo (Ctrl+Z) & Redo (Ctrl+Y)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        handleUndo();
-      } else if (
-        (e.ctrlKey || e.metaKey) &&
-        (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))
-      ) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        if (e.shiftKey) {
+          e.preventDefault();
+          handleRedo();
+        } else {
+          e.preventDefault();
+          handleUndo();
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
         e.preventDefault();
         handleRedo();
       }
@@ -125,200 +172,263 @@ export function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleUndo, handleRedo]);
 
-  // Update single cell inline
-  const handleUpdateCell = (id: number, field: keyof WholesaleItem, value: any) => {
-    const updated = items.map((item) => {
-      if (item.id === id) {
-        if (field === 'rate' || field === 'demand') {
-          const num = parseFloat(value);
-          return { ...item, [field]: isNaN(num) ? 0 : Math.max(0, num) };
+  // Direct cell editing handler
+  const handleUpdateCell = useCallback(
+    (id: number, field: keyof WholesaleItem, value: any) => {
+      const updated = items.map((item) => {
+        if (item.id === id) {
+          return { ...item, [field]: value };
         }
-        return { ...item, [field]: value };
-      }
-      return item;
-    });
+        return item;
+      });
+      commitItemsChange(updated);
+    },
+    [items, commitItemsChange]
+  );
 
-    commitItemsChange(updated, true);
-    const modifiedItem = items.find((i) => i.id === id);
-    if (modifiedItem) {
-      showToast(
-        language === 'ur'
-          ? `آئٹم "${modifiedItem.name}" اپڈیٹ ہو گیا!`
-          : `Item "${modifiedItem.name}" updated!`
-      );
-    }
-  };
-
-  // Add Item
+  // Add Item handler
   const handleAddItem = (newItemData: Omit<WholesaleItem, 'id'>) => {
     const nextId = items.length > 0 ? Math.max(...items.map((i) => i.id)) + 1 : 1;
     const newItem: WholesaleItem = {
       id: nextId,
       ...newItemData
     };
-
-    const updated = [...items, newItem];
-    commitItemsChange(updated, true);
-    showToast(
-      language === 'ur'
-        ? `نیا آئٹم "${newItem.name}" شامل کر دیا گیا!`
-        : `New item "${newItem.name}" added!`
-    );
+    const updated = [newItem, ...items];
+    commitItemsChange(updated);
+    showToast(language === 'ur' ? 'نیا آئٹم کامیابی سے شامل کر دیا گیا!' : 'New item added successfully!');
   };
 
-  // Delete Item
-  const handleDeleteItem = (id: number) => {
-    const target = items.find((i) => i.id === id);
-    if (!target) return;
+  // Delete item handler
+  const handleDeleteItem = useCallback(
+    (id: number) => {
+      const updated = items.filter((i) => i.id !== id);
+      commitItemsChange(updated);
+      showToast(language === 'ur' ? 'آئٹم ڈیلیٹ کر دیا گیا' : 'Item removed');
+    },
+    [items, commitItemsChange, showToast, language]
+  );
 
-    const updated = items.filter((i) => i.id !== id);
-    commitItemsChange(updated, true);
-    showToast(
-      language === 'ur'
-        ? `آئٹم "${target.name}" حذف ہو گیا۔`
-        : `Item "${target.name}" removed.`
-    );
-  };
-
-  // Reset to default master catalog
+  // Reset to initial master items
   const handleConfirmReset = () => {
-    const fresh = JSON.parse(JSON.stringify(DEFAULT_MASTER_ITEMS));
-    commitItemsChange(fresh, true);
-    setIsResetConfirmOpen(false);
-    setFilter('all');
-    setSortKey('id');
-    setSortDirection('asc');
-    setSearchQuery('');
+    commitItemsChange(JSON.parse(JSON.stringify(DEFAULT_MASTER_ITEMS)));
     showToast(
       language === 'ur'
-        ? 'شیٹ مکمل طور پر اصل حالت پر بحال کر دی گئی!'
-        : 'Catalog reset to default 87 items!'
+        ? 'تمام ریکارڈز ابتدائی حالت پر بحال کر دیے گئے ہیں!'
+        : 'Database reset to default wholesale master data!'
     );
   };
 
-  // Manual save trigger
+  // Reset stock, demand, status to zero placeholders
+  const handleResetToZeroPlaceholders = () => {
+    const cleared = items.map((item) => ({
+      ...item,
+      stock: '',
+      demand: 0,
+      status: ''
+    }));
+    commitItemsChange(cleared);
+    showToast(
+      language === 'ur'
+        ? 'اسٹاک، ڈیمانڈ اور کیفیت کامیابی سے صفر (0) کر دی گئیں!'
+        : 'Stock, demand & status cleared to zero placeholders!'
+    );
+  };
+
+  // Apply Demands from Swiper Mode
+  const handleApplySwiperDemands = (updatedSwiperItems: WholesaleItem[]) => {
+    commitItemsChange(updatedSwiperItems);
+    showToast(
+      language === 'ur'
+        ? 'سوائپر سے منتخب کردہ ڈیمانڈ ماسٹر شیٹ میں لاگو ہو گئی!'
+        : 'Demands from Swiper mode applied to main sheet!'
+    );
+  };
+
+  // Save manual snapshot
   const handleManualSave = () => {
     try {
-      localStorage.setItem('mukhtar_ali_custom_items', JSON.stringify(items));
+      localStorage.setItem('wholesale_demand_sheet_items_v2', JSON.stringify(items));
       showToast(
         language === 'ur'
-          ? 'تمام ڈیٹا کامیابی سے محفوظ ہو گیا!'
-          : 'All changes saved successfully!'
+          ? 'تمام ریکارڈز محفوظ ہو گئے ہیں (Saved)!'
+          : 'All sheet records saved to local storage!'
       );
     } catch {
       showToast('Error saving data');
     }
   };
 
-  // Export to Excel
-  const handleExportExcel = () => {
-    exportWholesaleExcel(items, language);
+  // Export to Excel handler (Protected by Super Admin permissions)
+  const handleExportExcel = (targetItems?: WholesaleItem[]) => {
+    if (!hasExportPermission(currentUser, 'excel')) {
+      setDeniedPermissionType('excel');
+      setIsAccessDeniedOpen(true);
+      return;
+    }
+
+    exportWholesaleExcel(targetItems || items, language);
     showToast(
       language === 'ur'
-        ? 'ایکسل فائل کامیابی سے ڈاؤنلوڈ ہو گئی!'
-        : 'Excel file downloaded successfully!'
+        ? 'ایکسل فائل برآمد ہو گئی ہے!'
+        : 'Excel file generated and exported!'
     );
   };
 
-  // Copy WhatsApp list
-  const handleCopyWhatsApp = () => {
-    const text = generateWhatsAppOrderText(items, language);
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    document.body.appendChild(textarea);
-    textarea.select();
-    try {
-      document.execCommand('copy');
-      showToast(
-        language === 'ur'
-          ? 'واٹس ایپ لسٹ کلپ بورڈ پر کاپی ہو گئی!'
-          : 'WhatsApp order summary copied to clipboard!'
-      );
-    } catch {
-      showToast('Copy failed');
+  // WhatsApp Send Handler: Opens recipient selection dialog (Protected by Super Admin permissions)
+  const handleOpenWhatsAppRecipient = (targetItems?: WholesaleItem[]) => {
+    if (!hasExportPermission(currentUser, 'whatsapp')) {
+      setDeniedPermissionType('whatsapp');
+      setIsAccessDeniedOpen(true);
+      return;
     }
-    document.body.removeChild(textarea);
+
+    setWhatsAppItemsTarget(targetItems || items);
+    setIsWhatsAppRecipientOpen(true);
   };
 
-  // Execute PDF / Print Customizer
-  const handleExecutePdfPrint = (options: {
+  // Print / PDF execution with custom column toggles (Protected by Super Admin permissions)
+  const handleExecutePdfPrint = ({
+    showDashboard,
+    visibleCols
+  }: {
     showDashboard: boolean;
     visibleCols: Record<string, boolean>;
   }) => {
-    const body = document.body;
-    body.classList.remove(
-      'pdf-hide-dashboard',
-      'pdf-hide-col-id',
-      'pdf-hide-col-name',
-      'pdf-hide-col-cat',
-      'pdf-hide-col-rate',
-      'pdf-hide-col-stock',
-      'pdf-hide-col-demand',
-      'pdf-hide-col-cost',
-      'pdf-hide-col-status'
-    );
-
-    if (!options.showDashboard) {
-      body.classList.add('pdf-hide-dashboard');
+    if (!hasExportPermission(currentUser, 'pdf')) {
+      setDeniedPermissionType('pdf');
+      setIsAccessDeniedOpen(true);
+      return;
     }
 
-    Object.entries(options.visibleCols).forEach(([colClass, isVisible]) => {
-      if (!isVisible) {
-        body.classList.add(`pdf-hide-${colClass}`);
+    const body = document.body;
+
+    // Toggle dashboard
+    if (!showDashboard) {
+      body.classList.add('pdf-hide-dashboard');
+    } else {
+      body.classList.remove('pdf-hide-dashboard');
+    }
+
+    // Toggle columns
+    Object.keys(visibleCols).forEach((colClass) => {
+      const shouldHide = !visibleCols[colClass];
+      const hideClass = `pdf-hide-${colClass}`;
+      if (shouldHide) {
+        body.classList.add(hideClass);
+      } else {
+        body.classList.remove(hideClass);
       }
     });
 
+    // Invoke print
     window.print();
+
+    // Clean up classes after print dialog opens
+    setTimeout(() => {
+      body.classList.remove('pdf-hide-dashboard');
+      [
+        'col-id',
+        'col-name',
+        'col-cat',
+        'col-rate',
+        'col-stock',
+        'col-demand',
+        'col-cost',
+        'col-status'
+      ].forEach((col) => {
+        body.classList.remove(`pdf-hide-${col}`);
+      });
+    }, 1500);
   };
 
-  // Sync route selection with filters if appropriate
-  const handleSelectRoute = (routeId: string) => {
-    setActiveRoute(routeId);
-    if (routeId === 'priority-orders') {
-      setFilter('demand');
-    } else if (routeId === 'low-stock') {
-      setFilter('lowstock');
-    } else if (routeId === 'shalmi-market') {
-      setFilter('shalmi');
-    } else if (routeId === 'kashif-wholesale') {
-      setFilter('kashif');
-    } else if (routeId === 'demand-sheet') {
-      setFilter('all');
+  // Role Request Switch Handler: Admin & Auditor & SuperAdmin are password protected
+  const handleRequestRoleSwitch = (requestedRole: UserRole) => {
+    // If switching to buyer, switch directly without password prompt
+    if (requestedRole === 'buyer') {
+      const users = getStoredUsers();
+      const buyerAcc = users.find((u) => u.role === 'buyer') || {
+        id: 'buyer-default',
+        username: 'buyer',
+        password: '',
+        name: 'Wholesale Buyer (خریدار)',
+        role: 'buyer' as UserRole,
+        canExportExcel: false,
+        canExportPdf: false,
+        canSendWhatsApp: true,
+        createdAt: '2026-09-10'
+      };
+      persistCurrentUser(buyerAcc);
+      setCurrentUserState(buyerAcc);
+      setUserRole('buyer');
+      showToast(
+        language === 'ur'
+          ? 'خریدار (Buyer) موڈ منتخب کیا گیا ہے'
+          : 'Switched to Buyer mode'
+      );
+      return;
     }
+
+    // Admin, Auditor, and SuperAdmin require password authentication!
+    setTargetRoleForLogin(requestedRole);
+    setIsRoleLoginOpen(true);
   };
 
-  // Parse stock value helper
-  const parseStockValue = (stockStr: string | number): number => {
-    if (typeof stockStr === 'number') return stockStr;
-    const match = String(stockStr).match(/\d+(\.\d+)?/);
-    return match ? parseFloat(match[0]) : 0;
+  const handleLoginSuccess = (authenticatedUser: UserAccount) => {
+    persistCurrentUser(authenticatedUser);
+    setCurrentUserState(authenticatedUser);
+    setUserRole(authenticatedUser.role);
+    showToast(
+      language === 'ur'
+        ? `خوش آمدید ${authenticatedUser.name}! لاگ ان کامیاب۔`
+        : `Welcome ${authenticatedUser.name}! Authentication successful.`
+    );
   };
 
-  // Metrics and Counts computation
+  // Filter routes based on role
+  const filteredRoutes = useMemo(() => {
+    return NAV_ROUTES.filter((r) => r.roles.includes(userRole));
+  }, [userRole]);
+
+  // Calculate Real-time Counts and KPI Metrics
   const metrics = useMemo(() => {
+    let demandedCount = 0;
     let totalUnits = 0;
     let totalBudget = 0;
-    let demandedCount = 0;
     let lowStockCount = 0;
     let shalmiCount = 0;
     let kashifCount = 0;
 
     items.forEach((item) => {
-      const d = Number(item.demand) || 0;
-      const r = Number(item.rate) || 0;
-      if (d > 0) {
-        demandedCount++;
-        totalUnits += d;
-        totalBudget += d * r;
+      const demandNum = Number(item.demand) || 0;
+      const rateNum = Number(item.rate) || 0;
+      const stockNum = Number(item.stock);
+
+      if (demandNum > 0) {
+        demandedCount += 1;
+        totalUnits += demandNum;
+        totalBudget += demandNum * rateNum;
       }
-      if (parseStockValue(item.stock) <= 5) {
-        lowStockCount++;
+
+      if (
+        !isNaN(stockNum) &&
+        stockNum <= 5 &&
+        item.stock !== '' &&
+        item.stock !== null
+      ) {
+        lowStockCount += 1;
+      } else if (
+        item.status &&
+        (item.status.includes('ختم') ||
+          item.status.includes('درکار') ||
+          item.status.includes('مطلوب'))
+      ) {
+        lowStockCount += 1;
       }
-      if (item.cat === 'شالمی') {
-        shalmiCount++;
-      }
-      if (item.cat === 'کاشف صاحب') {
-        kashifCount++;
+
+      if (item.cat.includes('شالمی')) {
+        shalmiCount += 1;
+      } else if (item.cat.includes('کاشف')) {
+        kashifCount += 1;
       }
     });
 
@@ -338,116 +448,117 @@ export function App() {
     };
   }, [items]);
 
-  // Filtered & Sorted items computation
+  // Filter & Sort Items for Display
   const filteredAndSortedItems = useMemo(() => {
-    let result = items.filter((item) => {
-      if (filter === 'demand' && (Number(item.demand) || 0) === 0) return false;
-      if (filter === 'lowstock' && parseStockValue(item.stock) > 5) return false;
-      if (filter === 'shalmi' && item.cat !== 'شالمی') return false;
-      if (filter === 'kashif' && item.cat !== 'کاشف صاحب') return false;
+    let result = [...items];
 
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        return (
-          item.name.toLowerCase().includes(q) ||
-          item.cat.toLowerCase().includes(q) ||
-          (item.status && item.status.toLowerCase().includes(q)) ||
-          String(item.rate).includes(q) ||
-          String(item.stock).toLowerCase().includes(q)
-        );
-      }
-      return true;
-    });
+    // 1. Apply Navigation Route / Filter Type
+    if (activeRoute === 'priority-orders' || filter === 'demand') {
+      result = result.filter((i) => Number(i.demand) > 0);
+    } else if (activeRoute === 'low-stock' || filter === 'lowstock') {
+      result = result.filter((i) => {
+        const s = Number(i.stock);
+        const lowByNum = !isNaN(s) && s <= 5 && i.stock !== '' && i.stock !== null;
+        const lowByStatus =
+          i.status &&
+          (i.status.includes('ختم') ||
+            i.status.includes('درکار') ||
+            i.status.includes('مطلوب'));
+        return lowByNum || lowByStatus;
+      });
+    } else if (activeRoute === 'shalmi-market' || filter === 'shalmi') {
+      result = result.filter((i) => i.cat.includes('شالمی'));
+    } else if (activeRoute === 'kashif-wholesale' || filter === 'kashif') {
+      result = result.filter((i) => i.cat.includes('کاشف'));
+    }
 
+    // 2. Apply Text Search Query (Item Name, Category, Status, or ID)
+    if (searchQuery.trim() !== '') {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(
+        (i) =>
+          i.name.toLowerCase().includes(q) ||
+          i.cat.toLowerCase().includes(q) ||
+          i.status.toLowerCase().includes(q) ||
+          i.id.toString() === q
+      );
+    }
+
+    // 3. Apply Column Sorting
     result.sort((a, b) => {
       let valA: any;
       let valB: any;
 
-      switch (sortKey) {
-        case 'name':
-          return sortDirection === 'asc'
-            ? a.name.localeCompare(b.name, 'ur')
-            : b.name.localeCompare(a.name, 'ur');
-        case 'cat':
-          return sortDirection === 'asc'
-            ? a.cat.localeCompare(b.cat, 'ur')
-            : b.cat.localeCompare(a.cat, 'ur');
-        case 'rate':
-          valA = Number(a.rate) || 0;
-          valB = Number(b.rate) || 0;
-          break;
-        case 'stock':
-          valA = parseStockValue(a.stock);
-          valB = parseStockValue(b.stock);
-          break;
-        case 'demand':
-          valA = Number(a.demand) || 0;
-          valB = Number(b.demand) || 0;
-          break;
-        case 'cost':
-          valA = (Number(a.demand) || 0) * (Number(a.rate) || 0);
-          valB = (Number(b.demand) || 0) * (Number(b.rate) || 0);
-          break;
-        case 'id':
-        default:
-          valA = a.id;
-          valB = b.id;
-          break;
+      if (sortKey === 'cost') {
+        valA = (Number(a.demand) || 0) * (Number(a.rate) || 0);
+        valB = (Number(b.demand) || 0) * (Number(b.rate) || 0);
+      } else if (sortKey === 'stock') {
+        valA = Number(a.stock) || 0;
+        valB = Number(b.stock) || 0;
+      } else {
+        valA = a[sortKey];
+        valB = b[sortKey];
       }
 
-      if (sortDirection === 'asc') {
-        return valA > valB ? 1 : valA < valB ? -1 : 0;
-      } else {
-        return valA < valB ? 1 : valA > valB ? -1 : 0;
+      if (typeof valA === 'string') {
+        return sortDirection === 'asc'
+          ? valA.localeCompare(valB)
+          : valB.localeCompare(valA);
       }
+
+      return sortDirection === 'asc' ? valA - valB : valB - valA;
     });
 
     return result;
-  }, [items, filter, searchQuery, sortKey, sortDirection]);
+  }, [items, activeRoute, filter, searchQuery, sortKey, sortDirection]);
 
-  // Sort Toggle on Column Header
+  // Handle Sort Toggle
   const handleSortToggle = (key: SortKey) => {
     if (sortKey === key) {
       setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortKey(key);
-      setSortDirection(key === 'demand' || key === 'cost' || key === 'rate' ? 'desc' : 'asc');
+      setSortDirection('asc');
     }
   };
 
+  // Reset Filters & Sort
   const handleResetFiltersAndSort = () => {
     setFilter('all');
     setSortKey('id');
     setSortDirection('asc');
     setSearchQuery('');
-    showToast(
-      language === 'ur'
-        ? 'فلٹرز اور ترتیب اصل حالت پر بحال ہو گئی!'
-        : 'Filters and sorting reset!'
-    );
+    setActiveRoute('demand-sheet');
   };
 
   return (
-    <div className="min-h-screen bg-[#EDEBF8] text-[#33364D] p-2.5 sm:p-4 md:p-6 transition-all flex flex-col lg:flex-row gap-4 md:gap-6">
-      {/* Dual-Tier Tier 1: Collapsible Tactile Sidebar */}
-      <div className="shrink-0 no-print">
-        <TactileSidebar
-          routes={NAV_ROUTES}
+    <div className="min-h-screen bg-[var(--bg-canvas)] text-[var(--text-main)] transition-colors duration-200 py-3 sm:py-6 px-3 sm:px-6 lg:px-8 space-y-4 sm:space-y-6 max-w-7xl mx-auto selection:bg-[var(--accent-blue)] selection:text-white relative">
+      
+      {/* Movable Floating Circular Swiper Button: positioned in front of Demand sheet, fixed so it remains in exact place on screen even while scrolling */}
+      <FloatingSwiperButton
+        onOpenSwiper={() => setIsSwiperOpen(true)}
+        language={language}
+      />
+
+      {/* Main Container Area */}
+      <div className="space-y-4 sm:space-y-6">
+        {/* Dual-Tier Tier 1: Responsive Horizontal Top Navigation Bar with Role Access */}
+        <OrderLaTopNav
+          routes={filteredRoutes}
           activeRoute={activeRoute}
-          onSelectRoute={handleSelectRoute}
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
+          onSelectRoute={setActiveRoute}
           userRole={userRole}
-          onChangeRole={setUserRole}
+          currentUser={currentUser}
+          onRequestRoleSwitch={handleRequestRoleSwitch}
+          onOpenSuperAdminConsole={() => setIsSuperAdminConsoleOpen(true)}
           language={language}
           itemsCount={metrics.counts}
         />
-      </div>
 
-      {/* Main Operating Stage */}
-      <div className="flex-1 max-w-7xl mx-auto w-full space-y-4 sm:space-y-6">
-        {/* Dual-Tier Tier 2: Top Utility & Control Bar */}
+        {/* Dual-Tier Tier 2: Top Utility & Control Bar with Theme Switcher, Quick Swiper, Export & Print */}
         <TopControlBar
+          theme={theme}
+          onToggleTheme={setTheme}
           language={language}
           onToggleLanguage={setLanguage}
           onOpenAddItem={() => setIsAddItemOpen(true)}
@@ -457,8 +568,10 @@ export function App() {
           onRedo={handleRedo}
           onSaveManual={handleManualSave}
           onPromptRevoke={() => setIsResetConfirmOpen(true)}
-          onExportExcel={handleExportExcel}
-          onCopyWhatsApp={handleCopyWhatsApp}
+          onResetToZeroPlaceholders={handleResetToZeroPlaceholders}
+          onOpenSwiper={() => setIsSwiperOpen(true)}
+          onExportExcel={() => handleExportExcel()}
+          onCopyWhatsApp={() => handleOpenWhatsAppRecipient()}
           onExecutePdfPrint={handleExecutePdfPrint}
         />
 
@@ -514,6 +627,67 @@ export function App() {
       </div>
 
       {/* Modals & Notifications */}
+      {/* 1. Rapid Demand Swiper Modal */}
+      <DemandSwiperModal
+        isOpen={isSwiperOpen}
+        onClose={() => setIsSwiperOpen(false)}
+        items={items}
+        onApplyDemands={handleApplySwiperDemands}
+        language={language}
+        onExportExcel={(sessionItems) => handleExportExcel(sessionItems)}
+        onRequestWhatsApp={(sessionItems) => handleOpenWhatsAppRecipient(sessionItems)}
+        onPrint={() => {
+          if (!hasExportPermission(currentUser, 'pdf')) {
+            setDeniedPermissionType('pdf');
+            setIsAccessDeniedOpen(true);
+          } else {
+            window.print();
+          }
+        }}
+      />
+
+      {/* 2. WhatsApp Recipient Selector Dialog (Super Admin / Admin / Custom) */}
+      <WhatsAppRecipientModal
+        isOpen={isWhatsAppRecipientOpen}
+        onClose={() => setIsWhatsAppRecipientOpen(false)}
+        items={whatsAppItemsTarget}
+        language={language}
+        onToast={showToast}
+      />
+
+      {/* 3. Role Protected Security Login Modal */}
+      <RoleLoginModal
+        isOpen={isRoleLoginOpen}
+        onClose={() => setIsRoleLoginOpen(false)}
+        targetRole={targetRoleForLogin}
+        onSuccess={handleLoginSuccess}
+        language={language}
+      />
+
+      {/* 4. Super Admin Management Authority Console */}
+      <SuperAdminConsoleModal
+        isOpen={isSuperAdminConsoleOpen}
+        onClose={() => setIsSuperAdminConsoleOpen(false)}
+        language={language}
+        onUsersUpdated={() => {
+          // Refresh current user permissions if updated
+          setCurrentUserState(getCurrentUser());
+        }}
+      />
+
+      {/* 5. Access Denied Modal when export permission not granted */}
+      <AccessDeniedModal
+        isOpen={isAccessDeniedOpen}
+        onClose={() => setIsAccessDeniedOpen(false)}
+        requiredPermission={deniedPermissionType}
+        onLoginAsSuperAdmin={() => {
+          setTargetRoleForLogin('superadmin');
+          setIsRoleLoginOpen(true);
+        }}
+        language={language}
+      />
+
+      {/* 6. Add Item Modal */}
       <AddItemModal
         isOpen={isAddItemOpen}
         onClose={() => setIsAddItemOpen(false)}
@@ -521,6 +695,7 @@ export function App() {
         language={language}
       />
 
+      {/* 7. Reset Confirmation Modal */}
       <ResetConfirmModal
         isOpen={isResetConfirmOpen}
         onClose={() => setIsResetConfirmOpen(false)}
@@ -528,6 +703,7 @@ export function App() {
         language={language}
       />
 
+      {/* Toast Notification Container */}
       <Toast message={toastMessage} />
     </div>
   );

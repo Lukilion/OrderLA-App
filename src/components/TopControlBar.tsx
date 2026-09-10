@@ -6,20 +6,24 @@ import {
   RotateCw, 
   Save, 
   Trash2, 
-  FileDown, 
   Printer, 
   FileSpreadsheet, 
-  Share2, 
   ChevronDown, 
   Sliders, 
   PieChart, 
-  Languages, 
   Check, 
-  MessageSquare
+  MessageSquare,
+  Sun,
+  Moon,
+  Flame,
+  Eraser,
+  Sparkles
 } from 'lucide-react';
-import { Language } from '../types';
+import { Language, Theme } from '../types';
 
 interface TopControlBarProps {
+  theme: Theme;
+  onToggleTheme: (theme: Theme) => void;
   language: Language;
   onToggleLanguage: (lang: Language) => void;
   onOpenAddItem: () => void;
@@ -29,12 +33,16 @@ interface TopControlBarProps {
   onRedo: () => void;
   onSaveManual: () => void;
   onPromptRevoke: () => void;
+  onResetToZeroPlaceholders: () => void;
+  onOpenSwiper: () => void;
   onExportExcel: () => void;
   onCopyWhatsApp: () => void;
   onExecutePdfPrint: (options: { showDashboard: boolean; visibleCols: Record<string, boolean> }) => void;
 }
 
 export const TopControlBar: React.FC<TopControlBarProps> = ({
+  theme,
+  onToggleTheme,
   language,
   onToggleLanguage,
   onOpenAddItem,
@@ -44,6 +52,8 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
   onRedo,
   onSaveManual,
   onPromptRevoke,
+  onResetToZeroPlaceholders,
+  onOpenSwiper,
   onExportExcel,
   onCopyWhatsApp,
   onExecutePdfPrint
@@ -92,21 +102,102 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
 
   return (
     <header className="neu-raised-lg rounded-3xl p-4 sm:p-6 transition-all no-print">
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-5">
-        {/* Left / Urdu Title Section */}
-        <div>
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full neu-inset-sm text-xs font-semibold text-[#0A84FF] mb-2">
-            <span className="w-2 h-2 rounded-full bg-[#0A84FF] animate-pulse"></span>
-            <span>
-              {isUrdu ? 'مانیٹرنگ، آڈٹ و ریٹ مینیجمنٹ' : 'Realtime Wholesale Audit & Demand'}
-            </span>
+      {/* Top Utility Strip (Visual Top-Left Theme Switcher) */}
+      <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-black/5 dark:border-white/10" dir="ltr">
+        {/* TOP LEFT: Visual Light / Dark Theme functionality toggle */}
+        <div className="flex items-center gap-2">
+          <div className="p-1 rounded-2xl flex items-center gap-1 neu-inset-sm">
+            <button
+              onClick={() => onToggleTheme('light')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
+                theme === 'light'
+                  ? 'neu-btn active text-[var(--accent-blue)]'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-main)]'
+              }`}
+              title="Switch to Light Theme"
+            >
+              <Sun className="w-3.5 h-3.5 text-amber-500" />
+              <span>Light</span>
+            </button>
+
+            <button
+              onClick={() => onToggleTheme('dark')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
+                theme === 'dark'
+                  ? 'neu-btn active text-[var(--accent-blue)]'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-main)]'
+              }`}
+              title="Switch to Dark Theme"
+            >
+              <Moon className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Dark</span>
+            </button>
           </div>
 
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-[#2C2E42] urdu-title leading-relaxed">
+          <span className="hidden sm:inline-block text-[11px] font-semibold text-[var(--text-secondary)]">
+            {theme === 'light' ? 'Soft Lavender' : 'Teal Noir'}
+          </span>
+        </div>
+
+        {/* Top Right: Language Switcher Pill */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center p-1 rounded-2xl neu-inset-sm">
+            <button
+              onClick={() => onToggleLanguage('ur')}
+              className={`px-2.5 py-1 text-xs font-bold rounded-xl transition cursor-pointer ${
+                language === 'ur'
+                  ? 'neu-btn-accent text-white'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-main)]'
+              }`}
+            >
+              اردو
+            </button>
+            <button
+              onClick={() => onToggleLanguage('en')}
+              className={`px-2.5 py-1 text-xs font-bold rounded-xl transition cursor-pointer ${
+                language === 'en'
+                  ? 'neu-btn-accent text-white'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-main)]'
+              }`}
+            >
+              EN
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Bar Contents */}
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-5">
+        {/* Title & Swiper Quick Launch Section */}
+        <div className="space-y-2">
+          {/* Quick Launch Ribbon: Open Swiper button located on left side under theme buttons */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Open Swiper Button */}
+            <button
+              onClick={onOpenSwiper}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-2xl neu-btn-accent text-xs font-black select-none cursor-pointer shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all group"
+              title={isUrdu ? 'تیز رفتار ڈیمانڈ سوائپر موڈ (سوائپ دائیں = چھوڑیں | سوائپ بائیں = مطلوب)' : 'Rapid Demand Swiper (Swipe Right = Skip | Swipe Left = Demand)'}
+            >
+              <Flame className="w-4 h-4 text-amber-300 animate-pulse" />
+              <span>{isUrdu ? '⚡ سوائپر موڈ کھولیں' : '⚡ Open Swiper'}</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/20 text-white font-mono font-bold">
+                {isUrdu ? 'سوائپ دائیں / بائیں' : 'Swipe'}
+              </span>
+            </button>
+
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full neu-inset-sm text-xs font-semibold text-[var(--accent-blue)]">
+              <span className="w-2 h-2 rounded-full bg-[var(--accent-blue)] animate-pulse"></span>
+              <span>
+                {isUrdu ? 'مانیٹرنگ، آڈٹ و ریٹ مینیجمنٹ' : 'Realtime Wholesale Audit & Demand'}
+              </span>
+            </div>
+          </div>
+
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-[var(--text-main)] urdu-title leading-relaxed">
             {isUrdu ? 'ڈیمانڈ شیٹ (Demand Sheet)' : 'Wholesale Demand Sheet'}
           </h1>
 
-          <p className="text-xs md:text-sm text-[#72768F] mt-0.5 font-medium max-w-2xl">
+          <p className="text-xs md:text-sm text-[var(--text-secondary)] mt-0.5 font-medium max-w-2xl">
             {isUrdu
               ? 'اپنے مطلوبہ مال کا اندراج کریں، اسٹاک اور ڈیمانڈ کی بنیاد پر آرڈر کی منصوبہ بندی کریں، اور متوقع خریداری بجٹ کا حساب لگائیں۔'
               : 'Record inventory demands, manage wholesale rates, plan stock replenishment, and compute projected procurement budget.'}
@@ -131,30 +222,30 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
                 setIsEditOpen(!isEditOpen);
                 setIsPdfOpen(false);
               }}
-              className="w-full inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-2xl neu-btn text-xs font-bold text-[#33364D] hover:text-[#0A84FF] select-none cursor-pointer"
+              className="w-full inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-2xl neu-btn text-xs font-bold text-[var(--text-main)] hover:text-[var(--accent-blue)] select-none cursor-pointer"
             >
-              <Edit3 className="w-3.5 h-3.5 text-[#0A84FF]" />
+              <Edit3 className="w-3.5 h-3.5 text-[var(--accent-blue)]" />
               <span>{isUrdu ? 'ترمیم (Edit)' : 'Edit'}</span>
-              <ChevronDown className="w-3 h-3 text-[#72768F]" />
+              <ChevronDown className="w-3 h-3 text-[var(--text-secondary)]" />
             </button>
 
             {isEditOpen && (
-              <div className="absolute left-0 sm:right-0 sm:left-auto mt-2 w-60 rounded-2xl neu-raised-lg p-2 z-40 space-y-1 text-xs font-medium animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute left-0 sm:right-0 sm:left-auto mt-2 w-64 rounded-2xl neu-raised-lg p-2 z-40 space-y-1 text-xs font-medium animate-in fade-in zoom-in-95 duration-100">
                 <button
                   onClick={() => {
                     onUndo();
                     setIsEditOpen(false);
                   }}
                   disabled={!canUndo}
-                  className={`w-full text-right px-3 py-2 rounded-xl neu-btn text-[#33364D] flex items-center justify-between ${
+                  className={`w-full text-right px-3 py-2 rounded-xl neu-btn text-[var(--text-main)] flex items-center justify-between ${
                     !canUndo ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
                   }`}
                 >
                   <span className="flex items-center gap-2">
-                    <RotateCcw className="w-3.5 h-3.5 text-[#0A84FF]" />
+                    <RotateCcw className="w-3.5 h-3.5 text-[var(--accent-blue)]" />
                     <span>{isUrdu ? 'پچھلا عمل واپس لائیں (Undo)' : 'Undo Action'}</span>
                   </span>
-                  <span className="text-[10px] text-[#72768F]">Ctrl+Z</span>
+                  <span className="text-[10px] text-[var(--text-secondary)]">Ctrl+Z</span>
                 </button>
 
                 <button
@@ -163,31 +254,47 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
                     setIsEditOpen(false);
                   }}
                   disabled={!canRedo}
-                  className={`w-full text-right px-3 py-2 rounded-xl neu-btn text-[#33364D] flex items-center justify-between ${
+                  className={`w-full text-right px-3 py-2 rounded-xl neu-btn text-[var(--text-main)] flex items-center justify-between ${
                     !canRedo ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
                   }`}
                 >
                   <span className="flex items-center gap-2">
-                    <RotateCw className="w-3.5 h-3.5 text-[#0A84FF]" />
+                    <RotateCw className="w-3.5 h-3.5 text-[var(--accent-blue)]" />
                     <span>{isUrdu ? 'دوبارہ کریں (Redo)' : 'Redo Action'}</span>
                   </span>
-                  <span className="text-[10px] text-[#72768F]">Ctrl+Y</span>
+                  <span className="text-[10px] text-[var(--text-secondary)]">Ctrl+Y</span>
                 </button>
 
-                <div className="h-px bg-[#D9D6EA] my-1"></div>
+                <div className="h-px bg-black/5 dark:bg-white/10 my-1"></div>
 
                 <button
                   onClick={() => {
                     onSaveManual();
                     setIsEditOpen(false);
                   }}
-                  className="w-full text-right px-3 py-2 rounded-xl neu-btn text-emerald-700 flex items-center justify-between cursor-pointer"
+                  className="w-full text-right px-3 py-2 rounded-xl neu-btn text-emerald-500 flex items-center justify-between cursor-pointer"
                 >
                   <span className="flex items-center gap-2">
-                    <Save className="w-3.5 h-3.5 text-emerald-600" />
+                    <Save className="w-3.5 h-3.5 text-emerald-500" />
                     <span>{isUrdu ? 'تبدیلیاں محفوظ کریں (Save)' : 'Save Changes'}</span>
                   </span>
-                  <Check className="w-3 h-3 text-emerald-600" />
+                  <Check className="w-3 h-3 text-emerald-500" />
+                </button>
+
+                {/* Reset Stock, Demand and Status to 0 placeholder */}
+                <button
+                  onClick={() => {
+                    onResetToZeroPlaceholders();
+                    setIsEditOpen(false);
+                  }}
+                  className="w-full text-right px-3 py-2 rounded-xl neu-btn text-amber-600 dark:text-amber-400 flex items-center justify-between cursor-pointer hover:text-amber-500"
+                  title={isUrdu ? 'تمام لسٹ کا اسٹاک، ڈیمانڈ اور کیفیت صفر کریں' : 'Reset all stock, demand and status to 0 placeholder'}
+                >
+                  <span className="flex items-center gap-2">
+                    <Eraser className="w-3.5 h-3.5 text-amber-500" />
+                    <span>{isUrdu ? 'اسٹاک، ڈیمانڈ و کیفیت صفر کریں' : 'Reset Stock, Demand & Status (0)'}</span>
+                  </span>
+                  <span className="text-[10px] neu-inset-sm px-1.5 py-0.5 rounded-full text-amber-500 font-mono font-bold">0</span>
                 </button>
 
                 <button
@@ -195,7 +302,7 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
                     onPromptRevoke();
                     setIsEditOpen(false);
                   }}
-                  className="w-full text-right px-3 py-2 rounded-xl neu-btn text-rose-600 flex items-center justify-between cursor-pointer"
+                  className="w-full text-right px-3 py-2 rounded-xl neu-btn text-rose-500 flex items-center justify-between cursor-pointer"
                 >
                   <span className="flex items-center gap-2">
                     <Trash2 className="w-3.5 h-3.5 text-rose-500" />
@@ -214,21 +321,21 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
                 setIsPdfOpen(!isPdfOpen);
                 setIsEditOpen(false);
               }}
-              className="w-full inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-2xl neu-btn text-xs font-bold text-[#33364D] hover:text-indigo-600 select-none cursor-pointer"
+              className="w-full inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-2xl neu-btn text-xs font-bold text-[var(--text-main)] hover:text-indigo-500 select-none cursor-pointer"
             >
-              <Printer className="w-3.5 h-3.5 text-indigo-600" />
+              <Printer className="w-3.5 h-3.5 text-indigo-500" />
               <span>{isUrdu ? 'پرنٹ / PDF سیٹنگز' : 'Print / PDF'}</span>
-              <ChevronDown className="w-3 h-3 text-[#72768F]" />
+              <ChevronDown className="w-3 h-3 text-[var(--text-secondary)]" />
             </button>
 
             {isPdfOpen && (
               <div className="absolute left-0 sm:right-0 sm:left-auto mt-2 w-72 rounded-2xl neu-raised-lg p-3.5 z-40 space-y-3 text-xs font-medium animate-in fade-in zoom-in-95 duration-100">
-                <div className="flex items-center justify-between pb-2 border-b border-[#D8D5EA]">
-                  <span className="font-bold text-[#2C2E42] text-[13px] flex items-center gap-1.5">
-                    <Sliders className="w-3.5 h-3.5 text-[#0A84FF]" />
+                <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/10">
+                  <span className="font-bold text-[var(--text-main)] text-[13px] flex items-center gap-1.5">
+                    <Sliders className="w-3.5 h-3.5 text-[var(--accent-blue)]" />
                     <span>{isUrdu ? 'پی ڈی ایف کسٹمائزیشن' : 'PDF Settings'}</span>
                   </span>
-                  <span className="text-[10px] neu-inset-sm px-2 py-0.5 rounded-full text-[#72768F]">
+                  <span className="text-[10px] neu-inset-sm px-2 py-0.5 rounded-full text-[var(--text-secondary)]">
                     {isUrdu ? 'ترتیب' : 'Options'}
                   </span>
                 </div>
@@ -237,9 +344,9 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
                 <div className="p-2 rounded-xl neu-inset-sm flex items-center justify-between">
                   <label 
                     htmlFor="pdfToggleDashboard" 
-                    className="cursor-pointer font-bold text-[#33364D] flex items-center gap-2 select-none"
+                    className="cursor-pointer font-bold text-[var(--text-main)] flex items-center gap-2 select-none"
                   >
-                    <PieChart className="w-3.5 h-3.5 text-emerald-600" />
+                    <PieChart className="w-3.5 h-3.5 text-emerald-500" />
                     <span className="text-[11px]">
                       {isUrdu ? 'ڈیش بورڈ خلاصہ کارڈز دکھائیں' : 'Show Dashboard KPI Cards'}
                     </span>
@@ -255,7 +362,7 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
 
                 {/* Columns Selection */}
                 <div className="space-y-1.5">
-                  <span className="block text-[11px] font-bold text-[#72768F]">
+                  <span className="block text-[11px] font-bold text-[var(--text-secondary)]">
                     {isUrdu ? 'کالمز کا انتخاب (کون سے فیلڈز پرنٹ ہوں):' : 'Select Columns to Print:'}
                   </span>
                   <div className="grid grid-cols-2 gap-1.5 max-h-44 overflow-y-auto p-1">
@@ -297,44 +404,20 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
           {/* Excel Export Button */}
           <button
             onClick={onExportExcel}
-            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-2xl neu-btn text-xs font-semibold text-[#2C2E42] hover:text-emerald-600 select-none cursor-pointer"
+            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-2xl neu-btn text-xs font-semibold text-[var(--text-main)] hover:text-emerald-500 select-none cursor-pointer"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500" />
             <span>{isUrdu ? 'ایکسل (.xlsx)' : 'Excel (.xlsx)'}</span>
           </button>
 
           {/* WhatsApp Copy Button */}
           <button
             onClick={onCopyWhatsApp}
-            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-2xl neu-btn text-xs font-semibold text-[#2C2E42] hover:text-emerald-600 select-none cursor-pointer"
+            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-2xl neu-btn text-xs font-semibold text-[var(--text-main)] hover:text-emerald-500 select-none cursor-pointer"
           >
-            <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+            <MessageSquare className="w-3.5 h-3.5 text-emerald-500" />
             <span>{isUrdu ? 'واٹس ایپ لسٹ' : 'WhatsApp'}</span>
           </button>
-
-          {/* Language Switcher Pill */}
-          <div className="flex items-center p-1 rounded-2xl neu-inset-sm">
-            <button
-              onClick={() => onToggleLanguage('ur')}
-              className={`px-2.5 py-1 text-xs font-bold rounded-xl transition ${
-                language === 'ur'
-                  ? 'neu-btn-accent text-white'
-                  : 'text-[#72768F] hover:text-[#33364D]'
-              }`}
-            >
-              اردو
-            </button>
-            <button
-              onClick={() => onToggleLanguage('en')}
-              className={`px-2.5 py-1 text-xs font-bold rounded-xl transition ${
-                language === 'en'
-                  ? 'neu-btn-accent text-white'
-                  : 'text-[#72768F] hover:text-[#33364D]'
-              }`}
-            >
-              EN
-            </button>
-          </div>
         </div>
       </div>
     </header>
