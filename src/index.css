@@ -1,0 +1,194 @@
+@import "tailwindcss";
+
+:root {
+  --bg-base: #EDEBF8;
+  --shadow-light: #FFFFFF;
+  --shadow-dark: #C5C3D8;
+  --shadow-darker: #C9C7DC;
+  --accent-blue: #0A84FF;
+  --text-main: #33364D;
+  --text-muted: #72768F;
+  --accent-hover: #0070E0;
+}
+
+body {
+  background-color: var(--bg-base);
+  color: var(--text-main);
+  font-family: 'Noto Sans Arabic', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+.urdu-title {
+  font-family: 'Noto Nastaliq Urdu', serif;
+}
+
+/* Tactile Neumorphic Soft UI Elevations */
+.neu-raised-lg {
+  background: var(--bg-base);
+  box-shadow: 10px 10px 22px var(--shadow-darker), -10px -10px 22px var(--shadow-light);
+}
+
+.neu-raised {
+  background: var(--bg-base);
+  box-shadow: 6px 6px 14px var(--shadow-dark), -6px -6px 14px var(--shadow-light);
+}
+
+.neu-raised-sm {
+  background: var(--bg-base);
+  box-shadow: 3px 3px 8px var(--shadow-dark), -3px -3px 8px var(--shadow-light);
+}
+
+/* Inset / Sunken / Pressed Soft UI */
+.neu-inset {
+  background: var(--bg-base);
+  box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
+}
+
+.neu-inset-sm {
+  background: var(--bg-base);
+  box-shadow: inset 2px 2px 5px var(--shadow-dark), inset -2px -2px 5px var(--shadow-light);
+}
+
+/* Interactive Tactile Buttons */
+.neu-btn {
+  background: var(--bg-base);
+  box-shadow: 5px 5px 12px var(--shadow-dark), -5px -5px 12px var(--shadow-light);
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.neu-btn:hover {
+  box-shadow: 3px 3px 7px var(--shadow-dark), -3px -3px 7px var(--shadow-light);
+  transform: translateY(-1px);
+}
+
+.neu-btn:active, .neu-btn.active {
+  box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
+  transform: translateY(1px);
+  color: var(--accent-blue);
+}
+
+.neu-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Electric Blue Accent Button */
+.neu-btn-accent {
+  background: linear-gradient(135deg, #0A84FF, #0070E0);
+  color: #ffffff;
+  box-shadow: 5px 5px 14px #C0C5DF, -5px -5px 14px var(--shadow-light);
+  transition: all 0.18s ease;
+}
+
+.neu-btn-accent:hover {
+  box-shadow: 3px 3px 8px #A8B2DB, -3px -3px 8px var(--shadow-light);
+  opacity: 0.96;
+}
+
+.neu-btn-accent:active {
+  box-shadow: inset 3px 3px 6px rgba(0, 0, 0, 0.25), inset -3px -3px 6px rgba(255, 255, 255, 0.35);
+  transform: translateY(1px);
+}
+
+/* Inset Form Inputs */
+.neu-input {
+  background: var(--bg-base);
+  box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
+  border: none;
+  outline: none;
+  color: var(--text-main);
+}
+
+.neu-input:focus {
+  box-shadow: inset 3px 3px 6px #B8B5CE, inset -3px -3px 6px var(--shadow-light), 0 0 0 2px rgba(10, 132, 255, 0.4);
+}
+
+/* Custom Soft Checkbox */
+.neu-checkbox {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  background: var(--bg-base);
+  box-shadow: inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.neu-checkbox:checked {
+  background: #0A84FF;
+  box-shadow: 2px 2px 5px var(--shadow-dark), -2px -2px 5px var(--shadow-light);
+}
+
+.neu-checkbox:checked::after {
+  content: '✓';
+  color: white;
+  font-size: 11px;
+  font-weight: bold;
+  position: absolute;
+}
+
+/* Table Hover */
+.neu-table-row {
+  transition: background 0.15s ease;
+}
+
+.neu-table-row:hover {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.neu-table-row.demanded {
+  background: rgba(10, 132, 255, 0.06);
+}
+
+/* Print and PDF Styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #ffffff !important;
+    padding: 0 !important;
+  }
+  .neu-raised, .neu-raised-lg, .neu-raised-sm, .neu-inset, .neu-inset-sm {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+  }
+  body.pdf-hide-dashboard #dashboardSection {
+    display: none !important;
+  }
+  body.pdf-hide-col-id .col-id,
+  body.pdf-hide-col-name .col-name,
+  body.pdf-hide-col-cat .col-cat,
+  body.pdf-hide-col-rate .col-rate,
+  body.pdf-hide-col-stock .col-stock,
+  body.pdf-hide-col-demand .col-demand,
+  body.pdf-hide-col-cost .col-cost,
+  body.pdf-hide-col-status .col-status {
+    display: none !important;
+  }
+  #desktopTableContainer {
+    display: block !important;
+  }
+  #mobileCardsContainer {
+    display: none !important;
+  }
+}
+
+/* Custom soft scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-base);
+}
+::-webkit-scrollbar-thumb {
+  background: #C4C2D6;
+  border-radius: 9999px;
+}

@@ -1,0 +1,8 @@
+{
+  "name": "OrderLA",
+  "description": "Enterprise Wholesale Demand Sheet, Rate Management & BOS with tactile dual-tier neumorphic UI in Urdu and English.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
