@@ -4,6 +4,8 @@ import {
   X, 
   ArrowLeft, 
   ArrowRight, 
+  ArrowUp,
+  ArrowDown,
   Check, 
   RotateCcw, 
   Sparkles, 
@@ -19,10 +21,16 @@ import {
   ChevronRight,
   ChevronLeft,
   Flame,
-  CheckCircle2
+  CheckCircle2,
+  RefreshCw
 } from 'lucide-react';
 import { WholesaleItem, Language, STATUS_PRESETS } from '../types';
 import { exportWholesaleExcel, generateWhatsAppOrderText } from '../utils/exportHelpers';
+import { 
+  saveSwiperProgress, 
+  loadSwiperProgress, 
+  clearSwiperProgress 
+} from '../utils/sessionCache';
 
 interface DemandSwiperModalProps {
   isOpen: boolean;
@@ -66,17 +74,62 @@ export const DemandSwiperModal: React.FC<DemandSwiperModalProps> = ({
   // Copy toast in completion screen
   const [copiedToast, setCopiedToast] = useState<boolean>(false);
 
-  // Initialize session whenever modal opens
+  // Resumed session indicator
+  const [isResumed, setIsResumed] = useState<boolean>(false);
+
+  // Initialize session whenever modal opens: restore progress from cache/cookies
   useEffect(() => {
     if (isOpen) {
-      setSessionItems(JSON.parse(JSON.stringify(items)));
-      setCurrentIndex(0);
-      setIsCompleted(false);
+      const saved = loadSwiperProgress();
+      const baseItems: WholesaleItem[] = JSON.parse(JSON.stringify(items));
+
+      if (saved && saved.currentIndex < baseItems.length && !saved.isCompleted) {
+        // Merge any demanded changes saved in session
+        if (saved.demandedChanges) {
+          baseItems.forEach((it) => {
+            if (saved.demandedChanges && saved.demandedChanges[it.id]) {
+              it.demand = saved.demandedChanges[it.id].demand;
+              it.status = saved.demandedChanges[it.id].status;
+            }
+          });
+        }
+        setSessionItems(baseItems);
+        setCurrentIndex(saved.currentIndex);
+        setIsCompleted(saved.isCompleted);
+        setIsResumed(true);
+      } else {
+        setSessionItems(baseItems);
+        setCurrentIndex(0);
+        setIsCompleted(false);
+        setIsResumed(false);
+      }
       setIsQuantityOpen(false);
       setDragOffset(0);
       setAnimatingCard(null);
     }
   }, [isOpen, items]);
+
+  // Sync progress to cache and cookies whenever index or sessionItems change
+  useEffect(() => {
+    if (isOpen && sessionItems.length > 0) {
+      const demandedMap: Record<number, { demand: number; status: string }> = {};
+      sessionItems.forEach((it) => {
+        if (Number(it.demand) > 0) {
+          demandedMap[it.id] = { demand: it.demand, status: it.status };
+        }
+      });
+      saveSwiperProgress(currentIndex, isCompleted, demandedMap);
+    }
+  }, [isOpen, currentIndex, isCompleted, sessionItems]);
+
+  // Restart session from scratch
+  const handleRestartSession = () => {
+    clearSwiperProgress();
+    setSessionItems(JSON.parse(JSON.stringify(items)));
+    setCurrentIndex(0);
+    setIsCompleted(false);
+    setIsResumed(false);
+  };
 
   // Metrics computation for session
   const sessionMetrics = useMemo(() => {
@@ -134,7 +187,7 @@ export const DemandSwiperModal: React.FC<DemandSwiperModalProps> = ({
   // User Needs item (Swipe Left) - Opens Quantity Popup
   const handleOpenQuantity = () => {
     if (!currentItem) return;
-    const initialQty = Number(currentItem.demand) > 0 ? Number(currentItem.demand) : 10;
+    const initialQty = Number(currentItem.demand) > 0 ? Number(currentItem.demand) : 0;
     setCustomQuantity(initialQty);
     setItemStatus(currentItem.status || 'اسٹاک دستیاب ہے');
     setIsQuantityOpen(true);
@@ -143,7 +196,7 @@ export const DemandSwiperModal: React.FC<DemandSwiperModalProps> = ({
   // Confirm Quantity in Popup
   const handleConfirmQuantity = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const qty = Math.max(1, Number(customQuantity) || 1);
+    const qty = Math.max(0, Number(customQuantity) || 0);
 
     setAnimatingCard('left');
     setIsQuantityOpen(false);
@@ -164,7 +217,7 @@ export const DemandSwiperModal: React.FC<DemandSwiperModalProps> = ({
 
   // Adjust Quantity (+5, +10, -5, -10)
   const handleAdjustQuantity = (delta: number) => {
-    setCustomQuantity((prev) => Math.max(1, (Number(prev) || 0) + delta));
+    setCustomQuantity((prev) => Math.max(0, (Number(prev) || 0) + delta));
   };
 
   // Go to Previous Item
@@ -275,6 +328,12 @@ export const DemandSwiperModal: React.FC<DemandSwiperModalProps> = ({
                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[var(--accent-blue)]/15 text-[var(--accent-blue)] font-mono">
                   OrderLa
                 </span>
+                {isResumed && !isCompleted && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full neu-inset-sm text-emerald-500 flex items-center gap-1" title="Session progress resumed from cache/cookies">
+                    <CheckCircle2 className="w-2.5 h-2.5" />
+                    {isUrdu ? 'محفوظ سیشن' : 'Resumed'}
+                  </span>
+                )}
               </div>
               <p className="text-[11px] text-[var(--text-secondary)] font-medium">
                 {isUrdu ? 'سوائپ دائیں = چھوڑیں | سوائپ بائیں = مطلوب' : 'Swipe Right = Skip | Swipe Left = Demand'}
@@ -283,6 +342,17 @@ export const DemandSwiperModal: React.FC<DemandSwiperModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {!isCompleted && currentIndex > 0 && (
+              <button
+                type="button"
+                onClick={handleRestartSession}
+                className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl neu-btn text-xs font-bold text-[var(--text-secondary)] hover:text-amber-500 cursor-pointer flex items-center gap-1"
+                title={isUrdu ? 'دوبارہ شروع کریں' : 'Restart from beginning'}
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{isUrdu ? 'ری سیٹ' : 'Reset'}</span>
+              </button>
+            )}
             {!isCompleted && (
               <button
                 onClick={() => setIsCompleted(true)}
@@ -629,21 +699,63 @@ export const DemandSwiperModal: React.FC<DemandSwiperModalProps> = ({
                 </div>
               </div>
 
-              {/* Custom Number Input */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-[var(--text-secondary)]">
-                  {isUrdu ? 'مطلوبہ تعداد (پیس)' : 'Required Quantity (Pcs)'}
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  autoFocus
-                  value={customQuantity}
-                  onChange={(e) => setCustomQuantity(Math.max(1, parseInt(e.target.value, 10) || 0))}
-                  className="w-full py-3 px-4 rounded-2xl neu-input text-center text-xl font-mono font-black text-[var(--accent-blue)]"
-                  placeholder="10"
-                />
+              {/* Custom Number Stepper with Left (+) and Right (-) Arrows */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-[var(--text-secondary)]">
+                    {isUrdu ? 'مطلوبہ تعداد (پیس)' : 'Required Quantity (Pcs)'}
+                  </label>
+                  <span className="text-[10px] text-[var(--text-secondary)] font-medium">
+                    {isUrdu ? 'بائیں تیر: بڑھائیں (+) | دائیں تیر: کم کریں (-)' : 'Left: Increase (+) | Right: Lower (-)'}
+                  </span>
+                </div>
+
+                {/* Tactile Mobile-Optimized Stepper: Left = Increase Arrow (+), Center = Input with '0' placeholder, Right = Lower Arrow (-) */}
+                <div dir="ltr" className="flex items-center gap-2.5 sm:gap-3 w-full justify-between">
+                  {/* Visual Left: Increasing Quantity Arrow (+) */}
+                  <button
+                    type="button"
+                    onClick={() => setCustomQuantity((prev) => (Number(prev) || 0) + 1)}
+                    className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl neu-btn flex flex-col items-center justify-center text-[var(--accent-blue)] active:scale-95 transition-transform shrink-0 cursor-pointer shadow-sm hover:text-blue-600"
+                    title={isUrdu ? 'تعداد بڑھائیں (+1)' : 'Increase quantity (+1)'}
+                    aria-label="Increase Quantity"
+                  >
+                    <ArrowUp className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
+                    <span className="text-[10px] font-black -mt-0.5">+1</span>
+                  </button>
+
+                  {/* Center: Numeric Input with Zero Value Placeholder by Default */}
+                  <div className="flex-1 relative">
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      autoFocus
+                      value={customQuantity === 0 ? '' : customQuantity}
+                      onChange={(e) => {
+                        const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
+                        setCustomQuantity(isNaN(val) ? 0 : Math.max(0, val));
+                      }}
+                      className="w-full py-2.5 sm:py-3 px-3 rounded-2xl neu-input text-center text-2xl sm:text-3xl font-mono font-black text-[var(--accent-blue)] placeholder:text-[var(--text-secondary)]/50 focus:outline-none"
+                      placeholder="0"
+                    />
+                    <span className="absolute bottom-1.5 sm:bottom-2 right-3 text-[10px] font-bold text-[var(--text-secondary)] pointer-events-none">
+                      {isUrdu ? 'پیس' : 'pcs'}
+                    </span>
+                  </div>
+
+                  {/* Visual Right: Lower the Quantity Arrow (-) */}
+                  <button
+                    type="button"
+                    onClick={() => setCustomQuantity((prev) => Math.max(0, (Number(prev) || 0) - 1))}
+                    className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl neu-btn flex flex-col items-center justify-center text-rose-500 active:scale-95 transition-transform shrink-0 cursor-pointer shadow-sm hover:text-rose-600"
+                    title={isUrdu ? 'تعداد کم کریں (-1)' : 'Lower quantity (-1)'}
+                    aria-label="Lower Quantity"
+                  >
+                    <ArrowDown className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
+                    <span className="text-[10px] font-black -mt-0.5">-1</span>
+                  </button>
+                </div>
               </div>
 
               {/* Quick Stepper Buttons (-10, -5, +5, +10) */}

@@ -10,16 +10,23 @@ export interface WholesaleItem {
 
 export type UserRole = 'superadmin' | 'admin' | 'buyer' | 'auditor' | 'purchaser';
 
+export type UserApprovalStatus = 'active' | 'pending' | 'rejected';
+
 export interface UserAccount {
   id: string;
   username: string;
   password: string;
   name: string;
+  email?: string;
+  phone?: string;
   role: UserRole;
+  requestedRole?: UserRole;
+  status?: UserApprovalStatus;
   canExportExcel: boolean;
   canExportPdf: boolean;
   canSendWhatsApp: boolean;
   createdAt: string;
+  notes?: string;
 }
 
 export interface WhatsAppRecipient {

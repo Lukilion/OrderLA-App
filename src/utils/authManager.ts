@@ -1,4 +1,7 @@
-import { UserAccount, UserRole, WhatsAppRecipient } from '../types';
+import { UserAccount, UserRole, UserApprovalStatus, WhatsAppRecipient } from '../types';
+import { saveSessionState, loadSessionState, setCookie, getCookie } from './sessionCache';
+
+export const SUPER_ADMIN_NOTIFICATION_EMAIL = 'hassantareen001@gmail.com';
 
 export const DEFAULT_USERS: UserAccount[] = [
   {
@@ -6,7 +9,9 @@ export const DEFAULT_USERS: UserAccount[] = [
     username: 'Lukilion',
     password: 'Lukilion@78612',
     name: 'Lukilion (Super Admin)',
+    email: 'hassantareen001@gmail.com',
     role: 'superadmin',
+    status: 'active',
     canExportExcel: true,
     canExportPdf: true,
     canSendWhatsApp: true,
@@ -17,7 +22,9 @@ export const DEFAULT_USERS: UserAccount[] = [
     username: 'admin',
     password: 'admin123',
     name: 'Admin Manager',
+    email: 'admin@orderla.pk',
     role: 'admin',
+    status: 'active',
     canExportExcel: true,
     canExportPdf: true,
     canSendWhatsApp: true,
@@ -29,6 +36,7 @@ export const DEFAULT_USERS: UserAccount[] = [
     password: '',
     name: 'Wholesale Buyer (خریدار)',
     role: 'buyer',
+    status: 'active',
     canExportExcel: false,
     canExportPdf: false,
     canSendWhatsApp: true,
@@ -40,6 +48,7 @@ export const DEFAULT_USERS: UserAccount[] = [
     password: 'audit123',
     name: 'Wholesale Auditor (آڈیٹر)',
     role: 'auditor',
+    status: 'active',
     canExportExcel: true,
     canExportPdf: true,
     canSendWhatsApp: false,
@@ -68,11 +77,11 @@ const USERS_STORAGE_KEY = 'orderla_users_accounts_v1';
 const CURRENT_USER_STORAGE_KEY = 'orderla_current_user_v1';
 
 /**
- * Retrieves all users from localStorage, initializing with default accounts if empty
+ * Retrieves all users from localStorage / Cache, initializing with default accounts if empty
  */
 export function getStoredUsers(): UserAccount[] {
   try {
-    const raw = localStorage.getItem(USERS_STORAGE_KEY);
+    const raw = localStorage.getItem(USERS_STORAGE_KEY) || getCookie(USERS_STORAGE_KEY);
     if (raw) {
       const parsed: UserAccount[] = JSON.parse(raw);
       // Ensure Lukilion always exists
@@ -86,7 +95,7 @@ export function getStoredUsers(): UserAccount[] {
       return parsed;
     }
   } catch (err) {
-    console.error('Failed to load users from localStorage', err);
+    console.error('Failed to load users from storage', err);
   }
 
   // Initialize with defaults
@@ -95,14 +104,10 @@ export function getStoredUsers(): UserAccount[] {
 }
 
 /**
- * Persists all users to localStorage
+ * Persists all users to localStorage and cookies
  */
 export function saveStoredUsers(users: UserAccount[]): void {
-  try {
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-  } catch (err) {
-    console.error('Failed to save users to localStorage', err);
-  }
+  saveSessionState(USERS_STORAGE_KEY, users);
 }
 
 /**
@@ -110,9 +115,8 @@ export function saveStoredUsers(users: UserAccount[]): void {
  */
 export function getCurrentUser(): UserAccount {
   try {
-    const raw = localStorage.getItem(CURRENT_USER_STORAGE_KEY);
-    if (raw) {
-      const user: UserAccount = JSON.parse(raw);
+    const user = loadSessionState<UserAccount | null>(CURRENT_USER_STORAGE_KEY, null);
+    if (user) {
       // Verify against fresh stored users list
       const users = getStoredUsers();
       const matched = users.find((u) => u.id === user.id);
@@ -130,14 +134,220 @@ export function getCurrentUser(): UserAccount {
 }
 
 /**
- * Sets currently logged in user
+ * Sets currently logged in user with cache and cookie synchronization
  */
 export function setCurrentUser(user: UserAccount): void {
-  try {
-    localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(user));
-  } catch (err) {
-    console.error('Failed to set current user', err);
+  saveSessionState(CURRENT_USER_STORAGE_KEY, user);
+}
+
+/**
+ * Get all pending registration requests awaiting Administrator approval
+ */
+export function getPendingRegistrations(): UserAccount[] {
+  const users = getStoredUsers();
+  return users.filter((u) => u.status === 'pending');
+}
+
+/**
+ * Construct email body and mailto link to notify hassantareen001@gmail.com
+ * with different levels of access granting options for administrator approval
+ */
+export function generateAdminApprovalEmail(newUser: UserAccount): {
+  to: string;
+  subject: string;
+  body: string;
+  mailtoUrl: string;
+} {
+  const to = SUPER_ADMIN_NOTIFICATION_EMAIL;
+  const subject = `[OrderLa Registration] New Access Approval Request: ${newUser.name} (@${newUser.username})`;
+
+  const requestedRoleLabel =
+    newUser.requestedRole === 'admin'
+      ? 'Level 3: Operational Admin (مکمل ایڈمن اختیارات)'
+      : newUser.requestedRole === 'auditor'
+      ? 'Level 2: Financial Auditor (آڈیٹر و رپورٹنگ)'
+      : 'Level 1: Wholesale Buyer (خریدار - بنیادی رسائی)';
+
+  const body = `Dear OrderLa Administrator (${SUPER_ADMIN_NOTIFICATION_EMAIL}),
+
+A new user has submitted a registration request for the OrderLa Wholesale Business Operating System (BOS).
+
+==================================================
+APPLICANT DETAILS:
+==================================================
+• Full Name: ${newUser.name}
+• Desired Username: @${newUser.username}
+• Contact Phone / WhatsApp: ${newUser.phone || 'Not provided'}
+• Email: ${newUser.email || 'Not provided'}
+• Registration Date: ${newUser.createdAt}
+• Requested Access Level: ${requestedRoleLabel}
+• Applicant Notes / Branch: ${newUser.notes || 'N/A'}
+
+==================================================
+ACCESS LEVEL GRANTING OPTIONS AVAILABLE:
+==================================================
+Please review and select the appropriate authority tier for this applicant:
+
+OPTION 1: LEVEL 1 - WHOLESALE BUYER (خریدار)
+  - Permissions: View demand sheets & send WhatsApp orders.
+  - Restricted: Cannot export Excel, cannot download PDF, cannot edit catalog rates.
+
+OPTION 2: LEVEL 2 - FINANCIAL AUDITOR (آڈیٹر)
+  - Permissions: View demand sheets, perform stock audit, export Excel spreadsheets & PDF documents.
+  - Restricted: Read-only for master pricing; cannot modify base rates or delete inventory items.
+
+OPTION 3: LEVEL 3 - OPERATIONAL ADMIN (ایڈمن مینیجر)
+  - Permissions: Full catalog editing, add/edit/delete wholesale items, edit base rates, full export (Excel/PDF/WhatsApp).
+
+OPTION 4: LEVEL 4 - SUPER ADMIN AUTHORITY (سپر ایڈمن)
+  - Permissions: Complete system authority, user management, backup/restore, permission overrides.
+
+==================================================
+HOW TO APPROVE OR REJECT:
+==================================================
+1. Log into OrderLa Wholesale BOS as Super Admin (@Lukilion).
+2. Open the "Super Admin Console" (Crown 👑 icon in Top Navigation).
+3. Under "Pending Registrations (رجسٹریشن کی درخواستیں)", click "Approve" with the desired access level, or "Reject".
+Alternatively, reply to this email directly with your approved access level instruction.
+
+--------------------------------------------------
+OrderLa Wholesale BOS Automated Notification System
+Security & Access Control Protocol`;
+
+  const mailtoUrl = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+  return { to, subject, body, mailtoUrl };
+}
+
+/**
+ * Register a new user account with pending approval status and generate admin notification
+ */
+export function registerUserAccount(data: {
+  name: string;
+  username: string;
+  password: string;
+  email?: string;
+  phone?: string;
+  requestedRole?: UserRole;
+  notes?: string;
+}): {
+  success: boolean;
+  user?: UserAccount;
+  mailtoUrl?: string;
+  error?: string;
+} {
+  const users = getStoredUsers();
+
+  const trimmedUsername = data.username.trim();
+  if (!trimmedUsername) {
+    return { success: false, error: 'براہِ کرم یوزر نیم درج کریں (Username is required)' };
   }
+
+  // Check existing
+  const exists = users.some(
+    (u) => u.username.trim().toLowerCase() === trimmedUsername.toLowerCase()
+  );
+  if (exists) {
+    return { success: false, error: 'یہ صارف نام پہلے سے زیر استعمال ہے (Username already exists)' };
+  }
+
+  const requestedRole = data.requestedRole || 'buyer';
+
+  // Create new user in pending state
+  const newUser: UserAccount = {
+    id: `user-reg-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+    username: trimmedUsername,
+    password: data.password || '',
+    name: data.name.trim() || trimmedUsername,
+    email: data.email?.trim() || '',
+    phone: data.phone?.trim() || '',
+    role: requestedRole === 'buyer' ? 'buyer' : 'buyer', // provisional role is buyer until approved
+    requestedRole,
+    status: 'pending',
+    canExportExcel: false,
+    canExportPdf: false,
+    canSendWhatsApp: true,
+    createdAt: new Date().toISOString().split('T')[0],
+    notes: data.notes?.trim() || ''
+  };
+
+  const updatedList = [...users, newUser];
+  saveStoredUsers(updatedList);
+
+  const emailInfo = generateAdminApprovalEmail(newUser);
+
+  return {
+    success: true,
+    user: newUser,
+    mailtoUrl: emailInfo.mailtoUrl
+  };
+}
+
+/**
+ * Approve a pending registration with specific access level and permissions
+ */
+export function approveUserRegistration(
+  userId: string,
+  grantedRole: UserRole,
+  permissions?: {
+    canExportExcel?: boolean;
+    canExportPdf?: boolean;
+    canSendWhatsApp?: boolean;
+  }
+): { success: boolean; error?: string } {
+  const users = getStoredUsers();
+  const targetIndex = users.findIndex((u) => u.id === userId);
+
+  if (targetIndex === -1) {
+    return { success: false, error: 'صارف نہیں ملا (User not found)' };
+  }
+
+  // Set defaults based on role if permissions not specified
+  const isAuditorOrAbove = grantedRole === 'auditor' || grantedRole === 'admin' || grantedRole === 'superadmin';
+  const isAdminOrAbove = grantedRole === 'admin' || grantedRole === 'superadmin';
+
+  users[targetIndex] = {
+    ...users[targetIndex],
+    role: grantedRole,
+    status: 'active',
+    canExportExcel: permissions?.canExportExcel ?? isAuditorOrAbove,
+    canExportPdf: permissions?.canExportPdf ?? isAuditorOrAbove,
+    canSendWhatsApp: permissions?.canSendWhatsApp ?? true
+  };
+
+  saveStoredUsers(users);
+
+  // If current user is this user, refresh session
+  const current = getCurrentUser();
+  if (current.id === userId) {
+    setCurrentUser(users[targetIndex]);
+  }
+
+  return { success: true };
+}
+
+/**
+ * Reject a pending registration
+ */
+export function rejectUserRegistration(
+  userId: string,
+  reason?: string
+): { success: boolean; error?: string } {
+  const users = getStoredUsers();
+  const targetIndex = users.findIndex((u) => u.id === userId);
+
+  if (targetIndex === -1) {
+    return { success: false, error: 'صارف نہیں ملا (User not found)' };
+  }
+
+  users[targetIndex] = {
+    ...users[targetIndex],
+    status: 'rejected',
+    notes: reason ? `Rejected: ${reason}` : 'Registration request declined by administrator'
+  };
+
+  saveStoredUsers(users);
+  return { success: true };
 }
 
 /**

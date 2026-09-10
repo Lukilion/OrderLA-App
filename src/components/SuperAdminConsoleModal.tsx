@@ -14,14 +14,23 @@ import {
   KeyRound, 
   AlertCircle,
   ToggleLeft,
-  ToggleRight
+  ToggleRight,
+  Mail,
+  Phone,
+  Clock,
+  UserCheck,
+  UserX,
+  Sparkles
 } from 'lucide-react';
 import { UserAccount, UserRole, Language } from '../types';
 import { 
   getStoredUsers, 
   addNewUser, 
   updateUserPermissions, 
-  deleteUser 
+  deleteUser,
+  approveUserRegistration,
+  rejectUserRegistration,
+  SUPER_ADMIN_NOTIFICATION_EMAIL
 } from '../utils/authManager';
 
 interface SuperAdminConsoleModalProps {
@@ -42,8 +51,30 @@ export const SuperAdminConsoleModal: React.FC<SuperAdminConsoleModalProps> = ({
   const isUrdu = language === 'ur';
   const isSuperAdmin = !currentUser || currentUser.role === 'superadmin' || currentUser.username.toLowerCase() === 'lukilion';
 
-  const [activeTab, setActiveTab] = useState<'users' | 'add-admin' | 'add-auditor' | 'add-buyer'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'pending' | 'add-admin' | 'add-auditor' | 'add-buyer'>('users');
   const [users, setUsers] = useState<UserAccount[]>([]);
+  
+  const pendingUsers = users.filter((u) => u.status === 'pending');
+
+  const handleApproveUser = (userId: string, role: UserRole) => {
+    const res = approveUserRegistration(userId, role);
+    if (res.success) {
+      refreshUsersList();
+    } else {
+      alert(res.error);
+    }
+  };
+
+  const handleRejectUser = (userId: string) => {
+    if (window.confirm(isUrdu ? 'کیا آپ واقعی اس رجسٹریشن درخواست کو مسترد کرنا چاہتے ہیں؟' : 'Are you sure you want to reject this registration request?')) {
+      const res = rejectUserRegistration(userId);
+      if (res.success) {
+        refreshUsersList();
+      } else {
+        alert(res.error);
+      }
+    }
+  };
   
   // Add User Form State
   const [formName, setFormName] = useState<string>('');
@@ -210,6 +241,30 @@ export const SuperAdminConsoleModal: React.FC<SuperAdminConsoleModalProps> = ({
             <span className="text-[10px] px-1.5 py-0.5 rounded-full neu-inset-sm font-mono font-bold">
               {users.length}
             </span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('pending');
+              setFormStatusMsg(null);
+            }}
+            className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              activeTab === 'pending'
+                ? 'neu-btn active text-amber-500'
+                : 'neu-btn text-[var(--text-main)]'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>{isUrdu ? 'نئی رجسٹریشنز (منظوری)' : 'Pending Approvals'}</span>
+            {pendingUsers.length > 0 ? (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500 text-white font-mono font-bold animate-pulse">
+                {pendingUsers.length}
+              </span>
+            ) : (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full neu-inset-sm font-mono font-bold text-[var(--text-secondary)]">
+                0
+              </span>
+            )}
           </button>
 
           {isSuperAdmin && (
@@ -397,8 +452,170 @@ export const SuperAdminConsoleModal: React.FC<SuperAdminConsoleModalProps> = ({
           </div>
         )}
 
+        {/* Tab: Pending Registrations & Access Approval */}
+        {activeTab === 'pending' && (
+          <div className="flex-1 py-3 overflow-y-auto space-y-3 pr-1">
+            {/* SuperAdmin Notification Target Info */}
+            <div className="p-3 rounded-2xl neu-inset-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-2">
+                <Mail className="w-4 h-4 text-amber-500 shrink-0" />
+                <span className="text-[var(--text-secondary)] font-medium">
+                  {isUrdu 
+                    ? `تمام رجسٹریشنز کی اطلاعی ای میلز بطور ڈیفالٹ سپر ایڈمن کو بھیجی جاتی ہیں:`
+                    : `Notification emails are configured to notify superadmin:`}
+                </span>
+                <span className="font-mono font-bold text-[var(--accent-blue)]">{SUPER_ADMIN_NOTIFICATION_EMAIL}</span>
+              </div>
+              <a
+                href={`mailto:${SUPER_ADMIN_NOTIFICATION_EMAIL}?subject=OrderLa%20Access%20Review`}
+                className="px-3 py-1.5 rounded-xl neu-btn text-[11px] font-bold text-[var(--accent-blue)] inline-flex items-center gap-1 self-end sm:self-auto cursor-pointer"
+              >
+                <Mail className="w-3 h-3" />
+                <span>{isUrdu ? 'ای میل ان باکس کھولیں' : 'Open Mailbox'}</span>
+              </a>
+            </div>
+
+            {pendingUsers.length === 0 ? (
+              <div className="py-12 text-center space-y-2">
+                <div className="w-12 h-12 rounded-full neu-inset-sm flex items-center justify-center mx-auto text-emerald-500">
+                  <UserCheck className="w-6 h-6" />
+                </div>
+                <h4 className="text-sm font-black text-[var(--text-main)] urdu-title">
+                  {isUrdu ? 'کوئی نئی رجسٹریشن زیرِ التواء نہیں ہے' : 'No Pending Registrations'}
+                </h4>
+                <p className="text-xs text-[var(--text-secondary)] font-medium max-w-sm mx-auto">
+                  {isUrdu 
+                    ? 'تمام صارفین تصدیق شدہ ہیں اور متعلقہ لیول پر ایکٹو ہیں۔' 
+                    : 'All users are approved and currently active.'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {pendingUsers.map((u) => {
+                  return (
+                    <div
+                      key={u.id}
+                      className="p-4 rounded-3xl neu-raised space-y-3 border-r-4 border-amber-500 transition-all text-right"
+                    >
+                      {/* User Header */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/5 dark:border-white/5 pb-2.5">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-9 h-9 rounded-xl neu-inset-sm flex items-center justify-center font-black text-amber-500 text-sm">
+                            {u.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-extrabold text-sm text-[var(--text-main)] urdu-title">{u.name}</span>
+                              <span className="text-[11px] font-mono text-[var(--accent-blue)]">@{u.username}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-[10px] text-[var(--text-secondary)]">
+                              <Clock className="w-3 h-3" />
+                              <span>{u.createdAt}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Requested Tier Badge */}
+                        <div className="text-left">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                            {isUrdu ? 'مطلوبہ رسائی:' : 'Requested:'}{' '}
+                            {u.requestedRole === 'admin'
+                              ? isUrdu ? 'لیول 3 (ایڈمن)' : 'Level 3 (Admin)'
+                              : u.requestedRole === 'auditor'
+                              ? isUrdu ? 'لیول 2 (آڈیٹر)' : 'Level 2 (Auditor)'
+                              : isUrdu ? 'لیول 1 (خریدار)' : 'Level 1 (Buyer)'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Contact Info & Notes */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-[var(--text-secondary)]">
+                        {u.phone && (
+                          <div className="flex items-center gap-1.5">
+                            <Phone className="w-3.5 h-3.5 text-emerald-500" />
+                            <span className="font-bold">{isUrdu ? 'فون / واٹس ایپ:' : 'Phone:'}</span>
+                            <span className="font-mono text-[var(--text-main)]" dir="ltr">{u.phone}</span>
+                          </div>
+                        )}
+                        {u.email && (
+                          <div className="flex items-center gap-1.5">
+                            <Mail className="w-3.5 h-3.5 text-[var(--accent-blue)]" />
+                            <span className="font-bold">{isUrdu ? 'ای میل:' : 'Email:'}</span>
+                            <span className="text-[var(--text-main)]">{u.email}</span>
+                          </div>
+                        )}
+                        {u.notes && (
+                          <div className="sm:col-span-2 text-[11px] bg-black/5 dark:bg-white/5 p-2 rounded-xl">
+                            <span className="font-bold">{isUrdu ? 'نوٹ / برانچ:' : 'Notes:'} </span>
+                            <span>{u.notes}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Approval Actions: 3 Access Level Tiers + Reject */}
+                      <div className="pt-1 flex flex-wrap items-center justify-between gap-2 border-t border-black/5 dark:border-white/5">
+                        <span className="text-[11px] font-bold text-[var(--text-secondary)]">
+                          {isUrdu ? 'رسائی لیول تفویض کریں (Grant Level):' : 'Grant Access Level:'}
+                        </span>
+
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {/* Level 1: Buyer */}
+                          <button
+                            type="button"
+                            onClick={() => handleApproveUser(u.id, 'buyer')}
+                            className="px-2.5 py-1.5 rounded-xl neu-btn text-[11px] font-bold text-emerald-600 hover:bg-emerald-500/10 cursor-pointer flex items-center gap-1"
+                            title="Grant Level 1 Buyer Access"
+                          >
+                            <Check className="w-3 h-3" />
+                            <span>{isUrdu ? 'لیول 1: خریدار' : 'Level 1: Buyer'}</span>
+                          </button>
+
+                          {/* Level 2: Auditor */}
+                          <button
+                            type="button"
+                            onClick={() => handleApproveUser(u.id, 'auditor')}
+                            className="px-2.5 py-1.5 rounded-xl neu-btn text-[11px] font-bold text-purple-600 hover:bg-purple-500/10 cursor-pointer flex items-center gap-1"
+                            title="Grant Level 2 Auditor Access"
+                          >
+                            <Check className="w-3 h-3" />
+                            <span>{isUrdu ? 'لیول 2: آڈیٹر' : 'Level 2: Auditor'}</span>
+                          </button>
+
+                          {/* Level 3: Admin */}
+                          {isSuperAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => handleApproveUser(u.id, 'admin')}
+                              className="px-2.5 py-1.5 rounded-xl neu-btn text-[11px] font-bold text-[var(--accent-blue)] hover:bg-[var(--accent-blue)]/10 cursor-pointer flex items-center gap-1"
+                              title="Grant Level 3 Admin Access"
+                            >
+                              <Check className="w-3 h-3" />
+                              <span>{isUrdu ? 'لیول 3: ایڈمن' : 'Level 3: Admin'}</span>
+                            </button>
+                          )}
+
+                          {/* Reject Request */}
+                          <button
+                            type="button"
+                            onClick={() => handleRejectUser(u.id)}
+                            className="px-2.5 py-1.5 rounded-xl neu-btn text-[11px] font-bold text-rose-500 hover:bg-rose-500/10 cursor-pointer flex items-center gap-1"
+                            title="Reject Registration"
+                          >
+                            <UserX className="w-3 h-3" />
+                            <span>{isUrdu ? 'مسترد' : 'Reject'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Tab 2, 3, 4: Add New User Form */}
-        {activeTab !== 'users' && (
+        {activeTab !== 'users' && activeTab !== 'pending' && (
           <div className="flex-1 py-4 overflow-y-auto space-y-4 max-w-lg mx-auto w-full">
             <div className="neu-inset-sm rounded-2xl p-3 text-center space-y-1">
               <h4 className="font-extrabold text-sm text-[var(--text-main)] urdu-title">

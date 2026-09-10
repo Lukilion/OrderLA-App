@@ -535,7 +535,7 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)] text-[var(--text-main)] transition-colors duration-200 py-3 sm:py-6 px-3 sm:px-6 lg:px-8 space-y-4 sm:space-y-6 max-w-7xl mx-auto selection:bg-[var(--accent-blue)] selection:text-white relative">
+    <div className="w-full min-h-screen bg-[var(--bg-canvas)] text-[var(--text-main)] transition-colors duration-200 py-2 sm:py-6 px-2.5 sm:px-6 lg:px-8 space-y-4 sm:space-y-6 max-w-7xl mx-auto selection:bg-[var(--accent-blue)] selection:text-white relative flex flex-col justify-start">
       
       {/* Movable Floating Circular Swiper Button: positioned in front of Demand sheet, fixed so it remains in exact place on screen even while scrolling */}
       <FloatingSwiperButton
