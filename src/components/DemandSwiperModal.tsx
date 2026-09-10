@@ -77,6 +77,32 @@ export const DemandSwiperModal: React.FC<DemandSwiperModalProps> = ({
     }
   }, [isOpen, items]);
 
+  // Metrics computation for session
+  const sessionMetrics = useMemo(() => {
+    let demandedCount = 0;
+    let totalUnits = 0;
+    let totalBudget = 0;
+    const demandedList: WholesaleItem[] = [];
+
+    sessionItems.forEach((item) => {
+      const d = Number(item.demand) || 0;
+      const r = Number(item.rate) || 0;
+      if (d > 0) {
+        demandedCount++;
+        totalUnits += d;
+        totalBudget += d * r;
+        demandedList.push(item);
+      }
+    });
+
+    return {
+      demandedCount,
+      totalUnits,
+      totalBudget,
+      demandedList
+    };
+  }, [sessionItems]);
+
   if (!isOpen) return null;
 
   const currentItem: WholesaleItem | undefined = sessionItems[currentIndex];
@@ -180,32 +206,6 @@ export const DemandSwiperModal: React.FC<DemandSwiperModalProps> = ({
       setDragOffset(0);
     }
   };
-
-  // Metrics computation for session
-  const sessionMetrics = useMemo(() => {
-    let demandedCount = 0;
-    let totalUnits = 0;
-    let totalBudget = 0;
-    const demandedList: WholesaleItem[] = [];
-
-    sessionItems.forEach((item) => {
-      const d = Number(item.demand) || 0;
-      const r = Number(item.rate) || 0;
-      if (d > 0) {
-        demandedCount++;
-        totalUnits += d;
-        totalBudget += d * r;
-        demandedList.push(item);
-      }
-    });
-
-    return {
-      demandedCount,
-      totalUnits,
-      totalBudget,
-      demandedList
-    };
-  }, [sessionItems]);
 
   // Apply to Main Sheet & Close
   const handleApplyAndClose = () => {
