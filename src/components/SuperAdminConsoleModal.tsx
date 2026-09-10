@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { OrderLaLogo } from './OrderLaLogo';
 import { 
   X, 
   Crown, 
@@ -28,15 +29,18 @@ interface SuperAdminConsoleModalProps {
   onClose: () => void;
   language: Language;
   onUsersUpdated: () => void;
+  currentUser?: UserAccount;
 }
 
 export const SuperAdminConsoleModal: React.FC<SuperAdminConsoleModalProps> = ({
   isOpen,
   onClose,
   language,
-  onUsersUpdated
+  onUsersUpdated,
+  currentUser
 }) => {
   const isUrdu = language === 'ur';
+  const isSuperAdmin = !currentUser || currentUser.role === 'superadmin' || currentUser.username.toLowerCase() === 'lukilion';
 
   const [activeTab, setActiveTab] = useState<'users' | 'add-admin' | 'add-auditor' | 'add-buyer'>('users');
   const [users, setUsers] = useState<UserAccount[]>([]);
@@ -145,22 +149,37 @@ export const SuperAdminConsoleModal: React.FC<SuperAdminConsoleModalProps> = ({
         {/* Header Ribbon */}
         <div className="flex items-center justify-between pb-3.5 border-b border-black/5 dark:border-white/10 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl neu-inset-sm flex items-center justify-center text-amber-500 font-black">
-              <Crown className="w-5 h-5 text-amber-500" />
+            <OrderLaLogo variant="icon" size="sm" />
+            <div className={`w-9 h-9 rounded-2xl neu-inset-sm flex items-center justify-center font-black ${
+              isSuperAdmin ? 'text-amber-500' : 'text-[var(--accent-blue)]'
+            }`}>
+              {isSuperAdmin ? <Crown className="w-5 h-5 text-amber-500" /> : <ShieldCheck className="w-5 h-5 text-[var(--accent-blue)]" />}
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg font-black text-[var(--text-main)] urdu-title">
-                  {isUrdu ? 'سپر ایڈمن کنٹرول کنسول (Lukilion)' : 'Super Admin Authority Console'}
+                  {isSuperAdmin 
+                    ? (isUrdu ? 'سپر ایڈمن کنٹرول کنسول (Lukilion)' : 'Super Admin Authority Console')
+                    : (isUrdu ? 'ایڈمن یوزر مینجمنٹ اور نیا صارف شامل کریں' : 'Admin User Authority & New User')}
                 </h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-600 border border-amber-500/30">
-                  {isUrdu ? 'مکمل اختیارات' : 'Full Authority'}
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                  isSuperAdmin 
+                    ? 'bg-amber-500/20 text-amber-600 border-amber-500/30' 
+                    : 'bg-[var(--accent-blue)]/20 text-[var(--accent-blue)] border-[var(--accent-blue)]/30'
+                }`}>
+                  {isSuperAdmin 
+                    ? (isUrdu ? 'مکمل اختیارات' : 'Full Authority') 
+                    : (isUrdu ? 'ایڈمن اختیارات' : 'Admin Authority')}
                 </span>
               </div>
               <p className="text-[11px] text-[var(--text-secondary)] font-medium">
-                {isUrdu
-                  ? 'نیا ایڈمن، نیا آڈیٹر شامل کریں اور ایکسل، پی ڈی ایف و واٹس ایپ کی اجازتیں کنٹرول کریں۔'
-                  : 'Add new admins, auditors, and grant export permissions (Excel, PDF, WhatsApp).'}
+                {isSuperAdmin
+                  ? (isUrdu
+                      ? 'نیا ایڈمن، نیا آڈیٹر شامل کریں اور ایکسل، پی ڈی ایف و واٹس ایپ کی اجازتیں کنٹرول کریں۔'
+                      : 'Add new admins, auditors, and grant export permissions (Excel, PDF, WhatsApp).')
+                  : (isUrdu
+                      ? 'نیا خریدار یا آڈیٹر شامل کریں اور ٹیم کے برآمدی اختیارات کا انتظام کریں۔'
+                      : 'Add new buyers or auditors and manage team export permissions.')}
               </p>
             </div>
           </div>
@@ -193,23 +212,25 @@ export const SuperAdminConsoleModal: React.FC<SuperAdminConsoleModalProps> = ({
             </span>
           </button>
 
-          <button
-            onClick={() => {
-              setActiveTab('add-admin');
-              setFormStatusMsg(null);
-              setFormCanExcel(true);
-              setFormCanPdf(true);
-              setFormCanWhatsApp(true);
-            }}
-            className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
-              activeTab === 'add-admin'
-                ? 'neu-btn active text-[var(--accent-blue)]'
-                : 'neu-btn text-[var(--text-main)]'
-            }`}
-          >
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>{isUrdu ? '+ نیا ایڈمن' : '+ New Admin'}</span>
-          </button>
+          {isSuperAdmin && (
+            <button
+              onClick={() => {
+                setActiveTab('add-admin');
+                setFormStatusMsg(null);
+                setFormCanExcel(true);
+                setFormCanPdf(true);
+                setFormCanWhatsApp(true);
+              }}
+              className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                activeTab === 'add-admin'
+                  ? 'neu-btn active text-[var(--accent-blue)]'
+                  : 'neu-btn text-[var(--text-main)]'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>{isUrdu ? '+ نیا ایڈمن' : '+ New Admin'}</span>
+            </button>
+          )}
 
           <button
             onClick={() => {

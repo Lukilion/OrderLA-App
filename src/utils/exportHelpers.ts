@@ -61,7 +61,7 @@ export function exportWholesaleExcel(items: WholesaleItem[], language: Language)
 export function generateWhatsAppOrderText(items: WholesaleItem[], language: Language): string {
   const isUrdu = language === 'ur';
 
-  let waText = `*${isUrdu ? 'مشترکہ ڈیمانڈ لسٹ (بنیادی قیمت کے ساتھ)' : 'Wholesale Demand & Order Sheet'}*\n\n`;
+  let waText = `🚚 *OrderLa Wholesale BOS* — *${isUrdu ? 'مشترکہ ڈیمانڈ و خریداری لسٹ' : 'Procurement & Demand Sheet'}*\n\n`;
 
   // Section 1: Shalmi Market
   const shalmiItems = items.filter(i => i.cat === 'شالمی');

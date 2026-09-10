@@ -17,7 +17,8 @@ import {
   Moon,
   Flame,
   Eraser,
-  Sparkles
+  Sparkles,
+  RefreshCw
 } from 'lucide-react';
 import { Language, Theme } from '../types';
 
@@ -38,6 +39,7 @@ interface TopControlBarProps {
   onExportExcel: () => void;
   onCopyWhatsApp: () => void;
   onExecutePdfPrint: (options: { showDashboard: boolean; visibleCols: Record<string, boolean> }) => void;
+  onOpenBackupUpdate?: () => void;
 }
 
 export const TopControlBar: React.FC<TopControlBarProps> = ({
@@ -56,7 +58,8 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
   onOpenSwiper,
   onExportExcel,
   onCopyWhatsApp,
-  onExecutePdfPrint
+  onExecutePdfPrint,
+  onOpenBackupUpdate
 }) => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isPdfOpen, setIsPdfOpen] = useState(false);
@@ -310,9 +313,41 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
                   </span>
                   <span className="text-[10px] text-rose-500">87 items</span>
                 </button>
+
+                {onOpenBackupUpdate && (
+                  <>
+                    <div className="h-px bg-black/5 dark:bg-white/10 my-1"></div>
+                    <button
+                      onClick={() => {
+                        onOpenBackupUpdate();
+                        setIsEditOpen(false);
+                      }}
+                      className="w-full text-right px-3 py-2 rounded-xl neu-btn text-[var(--accent-blue)] flex items-center justify-between cursor-pointer"
+                      title={isUrdu ? 'ایپ اپ ڈیٹ اور بیک اپ محفوظ کریں' : 'Backup or update data afterwards'}
+                    >
+                      <span className="flex items-center gap-2">
+                        <RefreshCw className="w-3.5 h-3.5 text-[var(--accent-blue)]" />
+                        <span>{isUrdu ? 'بیک اپ اور اپ ڈیٹ (Update)' : 'Backup & Update'}</span>
+                      </span>
+                      <span className="text-[10px] neu-inset-sm px-1.5 py-0.5 rounded-full text-[var(--accent-blue)] font-mono">JSON</span>
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>
+
+          {/* Backup & Update Quick Button */}
+          {onOpenBackupUpdate && (
+            <button
+              onClick={onOpenBackupUpdate}
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-2xl neu-btn text-xs font-bold text-[var(--text-main)] hover:text-[var(--accent-blue)] select-none cursor-pointer flex-1 sm:flex-none"
+              title={isUrdu ? 'ایپ اپ ڈیٹ، امپورٹ و ایکسپورٹ (Android / Desktop / Web)' : 'Update data afterwards, import or backup'}
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-[var(--accent-blue)]" />
+              <span className="hidden sm:inline">{isUrdu ? 'اپ ڈیٹ و بیک اپ' : 'Update & Backup'}</span>
+            </button>
+          )}
 
           {/* PDF / Print Settings Dropdown */}
           <div className="relative inline-block text-right flex-1 sm:flex-none" ref={pdfRef}>

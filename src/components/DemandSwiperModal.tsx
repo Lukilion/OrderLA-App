@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { OrderLaLogo } from './OrderLaLogo';
 import { 
   X, 
   ArrowLeft, 
@@ -265,13 +266,16 @@ export const DemandSwiperModal: React.FC<DemandSwiperModalProps> = ({
         {/* Header Ribbon */}
         <div className="flex items-center justify-between pb-3.5 border-b border-black/5 dark:border-white/10 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl neu-inset-sm flex items-center justify-center text-[var(--accent-blue)] font-black">
-              <Flame className="w-5 h-5 text-[var(--accent-blue)] animate-pulse" />
-            </div>
+            <OrderLaLogo variant="icon" size="sm" />
             <div>
-              <h2 className="text-base sm:text-lg font-black text-[var(--text-main)] urdu-title">
-                {isUrdu ? 'تیز رفتار ڈیمانڈ سوائپر' : 'Rapid Demand Swiper'}
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-black text-[var(--text-main)] urdu-title">
+                  {isUrdu ? 'تیز رفتار ڈیمانڈ سوائپر' : 'Rapid Demand Swiper'}
+                </h2>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[var(--accent-blue)]/15 text-[var(--accent-blue)] font-mono">
+                  OrderLa
+                </span>
+              </div>
               <p className="text-[11px] text-[var(--text-secondary)] font-medium">
                 {isUrdu ? 'سوائپ دائیں = چھوڑیں | سوائپ بائیں = مطلوب' : 'Swipe Right = Skip | Swipe Left = Demand'}
               </p>
@@ -460,12 +464,15 @@ export const DemandSwiperModal: React.FC<DemandSwiperModalProps> = ({
         {isCompleted && (
           <div className="flex-1 py-4 space-y-4 overflow-y-auto pr-1">
             {/* Celebration Card */}
-            <div className="neu-inset-sm rounded-3xl p-5 text-center space-y-2">
-              <div className="w-12 h-12 rounded-full neu-raised mx-auto flex items-center justify-center text-emerald-500">
-                <CheckCircle2 className="w-7 h-7" />
+            <div className="neu-inset-sm rounded-3xl p-5 text-center space-y-2.5">
+              <div className="flex items-center justify-center gap-3">
+                <OrderLaLogo variant="badge" size="md" />
+                <div className="w-10 h-10 rounded-2xl neu-raised flex items-center justify-center text-emerald-500">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
               </div>
               <h3 className="text-lg sm:text-xl font-black text-[var(--text-main)] urdu-title">
-                {isUrdu ? 'سوائپ جائزہ مکمل ہو گیا!' : 'Swiper Review Complete!'}
+                {isUrdu ? 'آرڈر لا سوائپ جائزہ مکمل ہو گیا!' : 'OrderLa Swiper Review Complete!'}
               </h3>
               <p className="text-xs text-[var(--text-secondary)] font-medium max-w-md mx-auto">
                 {isUrdu

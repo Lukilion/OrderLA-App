@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { WholesaleItem, UserRole, Language, Theme, FilterType, SortKey, SortDirection, UserAccount } from './types';
 import { DEFAULT_MASTER_ITEMS, NAV_ROUTES } from './data/masterItems';
 import { OrderLaTopNav } from './components/OrderLaTopNav';
+import { OrderLaLogo } from './components/OrderLaLogo';
 import { TopControlBar } from './components/TopControlBar';
 import { DashboardKpi } from './components/DashboardKpi';
 import { FilterSortBar } from './components/FilterSortBar';
@@ -12,6 +13,7 @@ import { ResetConfirmModal } from './components/ResetConfirmModal';
 import { DemandSwiperModal } from './components/DemandSwiperModal';
 import { RoleLoginModal } from './components/RoleLoginModal';
 import { SuperAdminConsoleModal } from './components/SuperAdminConsoleModal';
+import { BackupUpdateModal } from './components/BackupUpdateModal';
 import { WhatsAppRecipientModal } from './components/WhatsAppRecipientModal';
 import { AccessDeniedModal } from './components/AccessDeniedModal';
 import { FloatingSwiperButton } from './components/FloatingSwiperButton';
@@ -89,6 +91,7 @@ export function App() {
   const [isRoleLoginOpen, setIsRoleLoginOpen] = useState<boolean>(false);
   const [targetRoleForLogin, setTargetRoleForLogin] = useState<UserRole>('admin');
   const [isSuperAdminConsoleOpen, setIsSuperAdminConsoleOpen] = useState<boolean>(false);
+  const [isBackupUpdateOpen, setIsBackupUpdateOpen] = useState<boolean>(false);
   const [isWhatsAppRecipientOpen, setIsWhatsAppRecipientOpen] = useState<boolean>(false);
   const [whatsAppItemsTarget, setWhatsAppItemsTarget] = useState<WholesaleItem[]>(items);
   const [isAccessDeniedOpen, setIsAccessDeniedOpen] = useState<boolean>(false);
@@ -573,6 +576,7 @@ export function App() {
           onExportExcel={() => handleExportExcel()}
           onCopyWhatsApp={() => handleOpenWhatsAppRecipient()}
           onExecutePdfPrint={handleExecutePdfPrint}
+          onOpenBackupUpdate={() => setIsBackupUpdateOpen(true)}
         />
 
         {/* Real-time KPI Dashboard Cards */}
@@ -600,6 +604,25 @@ export function App() {
           language={language}
           counts={metrics.counts}
         />
+
+        {/* Official Printable Header with OrderLa Logo (renders only when printing/saving to PDF) */}
+        <div className="only-print pb-4 mb-4 border-b border-gray-300">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <OrderLaLogo variant="badge" size="lg" />
+              <div>
+                <h1 className="text-xl font-black text-black">OrderLa Wholesale Business OS</h1>
+                <p className="text-xs text-gray-700">
+                  {language === 'ur' ? 'ماسٹر ڈیمانڈ و خریداری ریٹ لسٹ' : 'Master Wholesale Procurement & Demand Sheet'}
+                </p>
+              </div>
+            </div>
+            <div className="text-right text-xs text-gray-700 space-y-0.5">
+              <div><strong>{language === 'ur' ? 'تاریخ:' : 'Date:'}</strong> {new Date().toLocaleDateString('en-PK')}</div>
+              <div><strong>{language === 'ur' ? 'کل اشیاء:' : 'Total Items:'}</strong> {items.length}</div>
+            </div>
+          </div>
+        </div>
 
         {/* 1. Desktop & Tablet View: Structured Neumorphic Table */}
         <DesktopTableView
@@ -669,6 +692,7 @@ export function App() {
         isOpen={isSuperAdminConsoleOpen}
         onClose={() => setIsSuperAdminConsoleOpen(false)}
         language={language}
+        currentUser={currentUser}
         onUsersUpdated={() => {
           // Refresh current user permissions if updated
           setCurrentUserState(getCurrentUser());
@@ -701,6 +725,23 @@ export function App() {
         onClose={() => setIsResetConfirmOpen(false)}
         onConfirm={handleConfirmReset}
         language={language}
+      />
+
+      {/* 8. Data Backup, Restore & App Update Modal */}
+      <BackupUpdateModal
+        isOpen={isBackupUpdateOpen}
+        onClose={() => setIsBackupUpdateOpen(false)}
+        language={language}
+        items={items}
+        onRestoreItems={(restoredItems) => {
+          commitItemsChange(restoredItems);
+          showToast(language === 'ur' ? 'ڈیٹا کامیابی سے بحال (Restore) کر دیا گیا ہے!' : 'Data restored successfully!');
+        }}
+        onMergeItems={(mergedItems) => {
+          commitItemsChange(mergedItems);
+          showToast(language === 'ur' ? 'نیا ڈیٹا کامیابی سے ضم (Merge) کر دیا گیا ہے!' : 'New items merged successfully!');
+        }}
+        onToast={showToast}
       />
 
       {/* Toast Notification Container */}

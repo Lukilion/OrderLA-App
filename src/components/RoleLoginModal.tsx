@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { OrderLaLogo } from './OrderLaLogo';
 import { 
   X, 
   ShieldCheck, 
@@ -167,9 +168,17 @@ export const RoleLoginModal: React.FC<RoleLoginModalProps> = ({
           <X className="w-4 h-4" />
         </button>
 
+        {/* Top Brand Logo Banner */}
+        <div className="flex flex-col items-center justify-center pt-1 pb-1">
+          <OrderLaLogo variant="badge" size="xl" />
+          <div className="text-[11px] font-bold text-[var(--text-secondary)] mt-2">
+            {isUrdu ? 'آرڈر لا - ہول سیل سیکیور لاگ ان' : 'OrderLa Wholesale Security Access'}
+          </div>
+        </div>
+
         {/* Header Ribbon */}
-        <div className="flex items-center gap-3.5 pr-2">
-          <div className="w-12 h-12 rounded-2xl neu-inset-sm flex items-center justify-center shrink-0">
+        <div className="flex items-center gap-3.5 pr-2 pt-2 border-t border-black/5 dark:border-white/10">
+          <div className="w-11 h-11 rounded-2xl neu-inset-sm flex items-center justify-center shrink-0">
             {info.icon}
           </div>
           <div>

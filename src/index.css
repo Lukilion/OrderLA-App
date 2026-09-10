@@ -258,9 +258,16 @@ body {
 }
 
 /* Print and PDF Styles */
+.only-print {
+  display: none !important;
+}
+
 @media print {
   .no-print {
     display: none !important;
+  }
+  .only-print {
+    display: block !important;
   }
   body {
     background: #ffffff !important;

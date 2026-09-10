@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { OrderLaLogo } from './OrderLaLogo';
 import { 
   TableProperties, 
   Star, 
@@ -13,6 +14,7 @@ import {
   Crown,
   Lock,
   User,
+  UserPlus,
   ShoppingBag,
   FileSpreadsheet
 } from 'lucide-react';
@@ -106,30 +108,21 @@ export const OrderLaTopNav: React.FC<OrderLaTopNavProps> = ({
   // Find active route object for mobile title display
   const activeRouteObj = routes.find((r) => r.id === activeRoute) || routes[0];
   const isSuperAdmin = currentUser.role === 'superadmin' || currentUser.username.toLowerCase() === 'lukilion';
+  const isAdmin = currentUser.role === 'admin';
+  const canManageUsers = isSuperAdmin || isAdmin;
 
   return (
     <nav className="w-full neu-raised rounded-3xl p-2.5 sm:p-3 transition-all no-print">
       <div className="flex items-center justify-between gap-2 sm:gap-3">
         
         {/* Brand / OS Logo Left */}
-        <div className="flex items-center gap-2.5 pl-1 shrink-0">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl neu-inset-sm flex items-center justify-center text-[var(--accent-blue)] font-black text-sm sm:text-base select-none">
-            <span className="tracking-tighter">O</span>
-            <span className="text-amber-500">L</span>
-          </div>
-          <div className="hidden sm:block">
-            <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-sm text-[var(--text-main)] tracking-tight">
-                OrderLa
-              </span>
-              <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-[var(--accent-blue)]/15 text-[var(--accent-blue)]">
-                BOS
-              </span>
-            </div>
-            <div className="text-[10px] text-[var(--text-secondary)] font-medium -mt-0.5">
-              {isUrdu ? 'ہول سیل بزنس آپریٹنگ سسٹم' : 'Wholesale Business OS'}
-            </div>
-          </div>
+        <div className="flex items-center pl-1 shrink-0">
+          <OrderLaLogo
+            variant="horizontal"
+            size="sm"
+            showSubtitle={true}
+            subtitleText={isUrdu ? 'ہول سیل بزنس آپریٹنگ سسٹم' : 'Wholesale Business OS'}
+          />
         </div>
 
         {/* Desktop Horizontal Navigation Links (hidden on screens < lg) */}
@@ -171,15 +164,31 @@ export const OrderLaTopNav: React.FC<OrderLaTopNavProps> = ({
 
         {/* Role Selector & User Profile Strip */}
         <div className="hidden md:flex items-center gap-2 shrink-0">
-          {/* Super Admin Console Trigger Button (Visible when logged in as Lukilion / SuperAdmin) */}
-          {isSuperAdmin && onOpenSuperAdminConsole && (
+          {/* Add User & Authority Console Trigger Button (Visible only in Super Admin or Admin mode) */}
+          {canManageUsers && onOpenSuperAdminConsole && (
             <button
               onClick={onOpenSuperAdminConsole}
-              className="px-3 py-1.5 rounded-2xl neu-raised text-xs font-black text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1.5 hover:scale-[1.02] active:scale-[0.98] transition cursor-pointer shadow-xs"
-              title={isUrdu ? 'سپر ایڈمن کنٹرول کنسول کھولیں' : 'Open Super Admin Authority Console'}
+              className={`px-3 py-1.5 rounded-2xl neu-raised text-xs font-black border flex items-center gap-1.5 hover:scale-[1.02] active:scale-[0.98] transition cursor-pointer shadow-xs ${
+                isSuperAdmin
+                  ? 'text-amber-600 dark:text-amber-400 border-amber-500/30'
+                  : 'text-[var(--accent-blue)] border-[var(--accent-blue)]/30'
+              }`}
+              title={
+                isSuperAdmin
+                  ? (isUrdu ? 'سپر ایڈمن کنٹرول کنسول کھولیں' : 'Open Super Admin Authority Console')
+                  : (isUrdu ? 'صارف شامل کریں اور اختیارات کا انتظام' : 'Add New User & Manage Authority')
+              }
             >
-              <Crown className="w-3.5 h-3.5 text-amber-500" />
-              <span>{isUrdu ? 'سپر ایڈمن کنسول' : 'Admin Console'}</span>
+              {isSuperAdmin ? (
+                <Crown className="w-3.5 h-3.5 text-amber-500" />
+              ) : (
+                <UserPlus className="w-3.5 h-3.5 text-[var(--accent-blue)]" />
+              )}
+              <span>
+                {isSuperAdmin
+                  ? (isUrdu ? 'سپر ایڈمن کنسول' : 'Admin Console')
+                  : (isUrdu ? '+ نیا صارف شامل کریں' : '+ Add User')}
+              </span>
             </button>
           )}
 
@@ -233,13 +242,15 @@ export const OrderLaTopNav: React.FC<OrderLaTopNavProps> = ({
 
         {/* Mobile Navigation Dropdown Button (visible on screens < lg) */}
         <div className="lg:hidden flex items-center gap-2" ref={mobileMenuRef}>
-          {isSuperAdmin && onOpenSuperAdminConsole && (
+          {canManageUsers && onOpenSuperAdminConsole && (
             <button
               onClick={onOpenSuperAdminConsole}
-              className="p-2 rounded-2xl neu-raised text-amber-500 border border-amber-500/30 flex items-center justify-center cursor-pointer"
-              title="Super Admin Console"
+              className={`p-2 rounded-2xl neu-raised border flex items-center justify-center cursor-pointer ${
+                isSuperAdmin ? 'text-amber-500 border-amber-500/30' : 'text-[var(--accent-blue)] border-[var(--accent-blue)]/30'
+              }`}
+              title={isSuperAdmin ? 'Super Admin Console' : 'Add New User'}
             >
-              <Crown className="w-4 h-4" />
+              {isSuperAdmin ? <Crown className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
             </button>
           )}
 
@@ -338,17 +349,29 @@ export const OrderLaTopNav: React.FC<OrderLaTopNavProps> = ({
                 </select>
               </div>
 
-              {isSuperAdmin && onOpenSuperAdminConsole && (
+              {canManageUsers && onOpenSuperAdminConsole && (
                 <div className="pt-1">
                   <button
                     onClick={() => {
                       setIsMobileMenuOpen(false);
                       onOpenSuperAdminConsole();
                     }}
-                    className="w-full py-2 px-3 rounded-2xl neu-raised text-xs font-black text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center justify-center gap-2 cursor-pointer"
+                    className={`w-full py-2 px-3 rounded-2xl neu-raised text-xs font-black border flex items-center justify-center gap-2 cursor-pointer ${
+                      isSuperAdmin
+                        ? 'text-amber-600 dark:text-amber-400 border-amber-500/30'
+                        : 'text-[var(--accent-blue)] border-[var(--accent-blue)]/30'
+                    }`}
                   >
-                    <Crown className="w-4 h-4 text-amber-500" />
-                    <span>{isUrdu ? 'سپر ایڈمن کنٹرول کنسول' : 'Super Admin Console'}</span>
+                    {isSuperAdmin ? (
+                      <Crown className="w-4 h-4 text-amber-500" />
+                    ) : (
+                      <UserPlus className="w-4 h-4 text-[var(--accent-blue)]" />
+                    )}
+                    <span>
+                      {isSuperAdmin
+                        ? (isUrdu ? 'سپر ایڈمن کنٹرول کنسول' : 'Super Admin Console')
+                        : (isUrdu ? '+ نیا صارف شامل کریں (Add User)' : '+ Add User & Authority')}
+                    </span>
                   </button>
                 </div>
               )}

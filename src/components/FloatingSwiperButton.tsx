@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { OrderLaLogo } from './OrderLaLogo';
 import { Zap, Move } from 'lucide-react';
 import { Language } from '../types';
 
@@ -162,10 +163,10 @@ export const FloatingSwiperButton: React.FC<FloatingSwiperButtonProps> = ({
         )}
 
         {/* Circular Tactile Soft UI Button */}
-        <div className="w-16 h-16 rounded-full neu-raised flex flex-col items-center justify-center bg-[var(--bg-canvas)] border-2 border-amber-500/40 relative shadow-xl">
-          {/* Glowing Icon */}
-          <div className="w-10 h-10 rounded-full neu-inset-sm flex items-center justify-center text-amber-500">
-            <Zap className="w-5 h-5 fill-amber-500 text-amber-500 animate-pulse" />
+        <div className="w-16 h-16 rounded-full neu-raised flex flex-col items-center justify-center bg-[var(--bg-canvas)] border-2 border-[var(--accent-blue)]/40 relative shadow-xl">
+          {/* Logo Badge */}
+          <div className="w-10 h-10 rounded-full neu-inset-sm flex items-center justify-center">
+            <OrderLaLogo variant="icon" size="sm" />
           </div>
 
           {/* Tiny Drag Handle Cue */}

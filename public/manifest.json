@@ -1,0 +1,21 @@
+{
+  "id": "/",
+  "name": "OrderLA - Wholesale Business OS",
+  "short_name": "OrderLA",
+  "description": "Enterprise Wholesale Demand Sheet, Rate Management & BOS with tactile dual-tier neumorphic UI in Urdu and English.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#EDEBF8",
+  "theme_color": "#0A84FF",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

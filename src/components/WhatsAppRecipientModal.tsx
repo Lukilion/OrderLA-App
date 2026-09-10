@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { OrderLaLogo } from './OrderLaLogo';
 import { 
   X, 
   MessageSquare, 
@@ -112,9 +113,10 @@ export const WhatsAppRecipientModal: React.FC<WhatsAppRecipientModalProps> = ({
         </button>
 
         {/* Header Ribbon */}
-        <div className="flex items-center gap-3.5 pr-2">
-          <div className="w-12 h-12 rounded-2xl neu-inset-sm flex items-center justify-center text-emerald-500 shrink-0">
-            <MessageSquare className="w-6 h-6" />
+        <div className="flex items-center gap-3 pr-2">
+          <OrderLaLogo variant="icon" size="sm" />
+          <div className="w-10 h-10 rounded-2xl neu-inset-sm flex items-center justify-center text-emerald-500 shrink-0">
+            <MessageSquare className="w-5 h-5" />
           </div>
           <div>
             <h3 className="text-base sm:text-lg font-black text-[var(--text-main)] urdu-title">
@@ -122,8 +124,8 @@ export const WhatsAppRecipientModal: React.FC<WhatsAppRecipientModalProps> = ({
             </h3>
             <p className="text-xs text-[var(--text-secondary)] font-medium">
               {isUrdu
-                ? 'آپ ڈیمانڈ شیٹ کس کو بھیجنا چاہتے ہیں؟'
-                : 'Whom do you want to send the demand sheet to?'}
+                ? 'آپ آرڈر لا ڈیمانڈ شیٹ کس کو بھیجنا چاہتے ہیں؟'
+                : 'Send OrderLa demand sheet via WhatsApp'}
             </p>
           </div>
         </div>
