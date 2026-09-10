@@ -16,7 +16,8 @@ import {
   User,
   UserPlus,
   ShoppingBag,
-  FileSpreadsheet
+  FileSpreadsheet,
+  LogOut
 } from 'lucide-react';
 import { NavRoute, UserRole, Language, UserAccount } from '../types';
 
@@ -28,6 +29,7 @@ interface OrderLaTopNavProps {
   currentUser: UserAccount;
   onRequestRoleSwitch: (role: UserRole) => void;
   onOpenSuperAdminConsole?: () => void;
+  onLogout?: () => void;
   language: Language;
   itemsCount: {
     total: number;
@@ -46,6 +48,7 @@ export const OrderLaTopNav: React.FC<OrderLaTopNavProps> = ({
   currentUser,
   onRequestRoleSwitch,
   onOpenSuperAdminConsole,
+  onLogout,
   language,
   itemsCount
 }) => {
@@ -238,6 +241,19 @@ export const OrderLaTopNav: React.FC<OrderLaTopNavProps> = ({
               <Lock className="w-3.5 h-3.5" />
             </button>
           </div>
+
+          {/* Logout / Exit to Gateway Button */}
+          {onLogout && (
+            <button
+              type="button"
+              onClick={onLogout}
+              className="p-2 rounded-2xl neu-raised text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 cursor-pointer transition flex items-center gap-1.5 text-xs font-bold"
+              title={isUrdu ? 'لاگ آؤٹ کریں اور پورٹل پر واپس جائیں' : 'Sign Out / Exit to Gateway'}
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden xl:inline">{isUrdu ? 'لاگ آؤٹ' : 'Sign Out'}</span>
+            </button>
+          )}
         </div>
 
         {/* Mobile Navigation Dropdown Button (visible on screens < lg) */}
@@ -372,6 +388,23 @@ export const OrderLaTopNav: React.FC<OrderLaTopNavProps> = ({
                         ? (isUrdu ? 'سپر ایڈمن کنٹرول کنسول' : 'Super Admin Console')
                         : (isUrdu ? '+ نیا صارف شامل کریں (Add User)' : '+ Add User & Authority')}
                     </span>
+                  </button>
+                </div>
+              )}
+
+              {/* Mobile Logout / Exit Button */}
+              {onLogout && (
+                <div className="pt-1.5 border-t border-black/5 dark:border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      onLogout();
+                    }}
+                    className="w-full py-2 px-3 rounded-2xl neu-raised text-xs font-bold text-rose-500 flex items-center justify-center gap-2 cursor-pointer hover:bg-rose-500/10"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>{isUrdu ? 'لاگ آؤٹ / پورٹل پر واپس جائیں' : 'Sign Out / Return to Portal'}</span>
                   </button>
                 </div>
               )}

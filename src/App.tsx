@@ -18,8 +18,9 @@ import { WhatsAppRecipientModal } from './components/WhatsAppRecipientModal';
 import { AccessDeniedModal } from './components/AccessDeniedModal';
 import { FloatingSwiperButton } from './components/FloatingSwiperButton';
 import { Toast } from './components/Toast';
+import { AuthGatewayScreen } from './components/AuthGatewayScreen';
 import { exportWholesaleExcel } from './utils/exportHelpers';
-import { getCurrentUser, hasExportPermission, getStoredUsers, setCurrentUser as persistCurrentUser } from './utils/authManager';
+import { getCurrentUser, hasExportPermission, getStoredUsers, setCurrentUser as persistCurrentUser, logoutUser } from './utils/authManager';
 
 export function App() {
   // Visual Theme State (Light / Dark)
@@ -43,13 +44,15 @@ export function App() {
     }
   }, [theme]);
 
-  // Authenticated User & Role State
-  const [currentUser, setCurrentUserState] = useState<UserAccount>(() => getCurrentUser());
-  const [userRole, setUserRole] = useState<UserRole>(() => currentUser.role);
+  // Authenticated User & Role State (Defaults to null to force Login/Register at the very first stage)
+  const [currentUser, setCurrentUserState] = useState<UserAccount | null>(() => getCurrentUser());
+  const [userRole, setUserRole] = useState<UserRole>(() => (currentUser ? currentUser.role : 'buyer'));
 
   // Sync role with currentUser
   useEffect(() => {
-    setUserRole(currentUser.role);
+    if (currentUser) {
+      setUserRole(currentUser.role);
+    }
   }, [currentUser]);
 
   // Navigation State
@@ -387,6 +390,16 @@ export function App() {
     );
   };
 
+  const handleLogout = () => {
+    logoutUser();
+    setCurrentUserState(null);
+    showToast(
+      language === 'ur'
+        ? 'آپ کامیابی سے لاگ آؤٹ ہو چکے ہیں۔'
+        : 'You have been logged out successfully.'
+    );
+  };
+
   // Filter routes based on role
   const filteredRoutes = useMemo(() => {
     return NAV_ROUTES.filter((r) => r.roles.includes(userRole));
@@ -534,6 +547,23 @@ export function App() {
     setActiveRoute('demand-sheet');
   };
 
+  // Mandatory First Stage Authentication Check:
+  // If no user is authenticated, render the Auth Gateway Interface as the default opening first page
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-[var(--bg-canvas)] text-[var(--text-main)] antialiased transition-colors duration-200 flex flex-col justify-between">
+        <AuthGatewayScreen
+          theme={theme}
+          onToggleTheme={setTheme}
+          language={language}
+          onToggleLanguage={setLanguage}
+          onLoginSuccess={handleLoginSuccess}
+        />
+        <Toast message={toastMessage} />
+      </div>
+    );
+  }
+
   return (
     <div className="w-full min-h-screen bg-[var(--bg-canvas)] text-[var(--text-main)] transition-colors duration-200 py-2 sm:py-6 px-2.5 sm:px-6 lg:px-8 space-y-4 sm:space-y-6 max-w-7xl mx-auto selection:bg-[var(--accent-blue)] selection:text-white relative flex flex-col justify-start">
       
@@ -554,6 +584,7 @@ export function App() {
           currentUser={currentUser}
           onRequestRoleSwitch={handleRequestRoleSwitch}
           onOpenSuperAdminConsole={() => setIsSuperAdminConsoleOpen(true)}
+          onLogout={handleLogout}
           language={language}
           itemsCount={metrics.counts}
         />
@@ -695,7 +726,10 @@ export function App() {
         currentUser={currentUser}
         onUsersUpdated={() => {
           // Refresh current user permissions if updated
-          setCurrentUserState(getCurrentUser());
+          const updated = getCurrentUser();
+          if (updated) {
+            setCurrentUserState(updated);
+          }
         }}
       />
 

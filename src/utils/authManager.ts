@@ -110,11 +110,37 @@ export function saveStoredUsers(users: UserAccount[]): void {
   saveSessionState(USERS_STORAGE_KEY, users);
 }
 
-/**
- * Gets currently logged in user
- */
-export function getCurrentUser(): UserAccount {
+export const AUTH_SESSION_FLAG = 'orderla_session_authenticated_v1';
+
+export function isSessionAuthenticated(): boolean {
   try {
+    return sessionStorage.getItem(AUTH_SESSION_FLAG) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function setSessionAuthenticated(authenticated: boolean): void {
+  try {
+    if (authenticated) {
+      sessionStorage.setItem(AUTH_SESSION_FLAG, 'true');
+    } else {
+      sessionStorage.removeItem(AUTH_SESSION_FLAG);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Gets currently logged in user (null if no active authenticated session)
+ */
+export function getCurrentUser(): UserAccount | null {
+  try {
+    // If not authenticated in the current browser session, force login/register screen
+    if (!isSessionAuthenticated()) {
+      return null;
+    }
     const user = loadSessionState<UserAccount | null>(CURRENT_USER_STORAGE_KEY, null);
     if (user) {
       // Verify against fresh stored users list
@@ -126,18 +152,34 @@ export function getCurrentUser(): UserAccount {
     /* fallback */
   }
 
-  // Default initial session is Super Admin (Lukilion) or Buyer
-  const users = getStoredUsers();
-  const superAdmin = users.find((u) => u.username.toLowerCase() === 'lukilion') || users[0];
-  setCurrentUser(superAdmin);
-  return superAdmin;
+  // Do not auto-login: user must log in or register at the very first stage
+  return null;
 }
 
 /**
  * Sets currently logged in user with cache and cookie synchronization
  */
-export function setCurrentUser(user: UserAccount): void {
-  saveSessionState(CURRENT_USER_STORAGE_KEY, user);
+export function setCurrentUser(user: UserAccount | null): void {
+  if (user) {
+    setSessionAuthenticated(true);
+    saveSessionState(CURRENT_USER_STORAGE_KEY, user);
+  } else {
+    logoutUser();
+  }
+}
+
+/**
+ * Clears current user session and removes tokens from localStorage and cookies
+ */
+export function logoutUser(): void {
+  setSessionAuthenticated(false);
+  saveSessionState(CURRENT_USER_STORAGE_KEY, null);
+  try {
+    localStorage.removeItem(CURRENT_USER_STORAGE_KEY);
+    setCookie(CURRENT_USER_STORAGE_KEY, '', -1);
+  } catch {
+    /* ignore */
+  }
 }
 
 /**
@@ -319,7 +361,7 @@ export function approveUserRegistration(
 
   // If current user is this user, refresh session
   const current = getCurrentUser();
-  if (current.id === userId) {
+  if (current && current.id === userId) {
     setCurrentUser(users[targetIndex]);
   }
 
@@ -430,7 +472,7 @@ export function updateUserPermissions(
 
   // If updating current user, refresh current user state too
   const current = getCurrentUser();
-  if (current.id === userId) {
+  if (current && current.id === userId) {
     const fresh = updated.find((u) => u.id === userId);
     if (fresh) setCurrentUser(fresh);
   }
@@ -456,8 +498,8 @@ export function deleteUser(userId: string): { success: boolean; error?: string }
 
   // If deleted current user, switch to default buyer or superadmin
   const current = getCurrentUser();
-  if (current.id === userId) {
-    setCurrentUser(filtered[0]);
+  if (current && current.id === userId) {
+    setCurrentUser(filtered[0] || null);
   }
 
   return { success: true };
