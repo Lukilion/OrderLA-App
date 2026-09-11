@@ -80,6 +80,12 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
   const [waitStatusMsg, setWaitStatusMsg] = useState<string | null>(null);
   const [isCheckingStatus, setIsCheckingStatus] = useState<boolean>(false);
 
+  // Registration Success State
+  const [regSuccessData, setRegSuccessData] = useState<{
+    user: UserAccount;
+    mailtoUrl?: string;
+  } | null>(null);
+
   // Submit Login
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -234,9 +240,11 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
       return;
     }
 
-    // New user will only see a waiting message asking them to hold and wait until their access is approved and granted
-    setPendingWaitUser(regResult.user);
-    setWaitStatusMsg(null);
+    // Set registration success data for review and notification
+    setRegSuccessData({
+      user: regResult.user,
+      mailtoUrl: regResult.mailtoUrl
+    });
   };
 
   return (
@@ -330,8 +338,76 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
             </p>
           </div>
 
-          {/* Dual-Tier Neumorphic Mode Switcher Pill */}
-          <div className="p-1.5 rounded-3xl neu-inset flex items-center gap-2">
+          {pendingWaitUser ? (
+            /* Pending Approval Waiting State View */
+            <div className="space-y-4 animate-in zoom-in-95 duration-200 text-center py-2">
+              <div className="w-16 h-16 rounded-full neu-inset-sm flex items-center justify-center mx-auto text-amber-500">
+                <Clock className="w-8 h-8" />
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="text-lg font-black text-[var(--text-main)] urdu-title">
+                  {isUrdu ? 'اکاؤنٹ منظوری کے منتظر ہے' : 'Account Pending Approval'}
+                </h3>
+                <p className="text-xs text-[var(--text-secondary)] max-w-md mx-auto">
+                  {isUrdu
+                    ? `صارف @${pendingWaitUser.username} کا اکاؤنٹ ایڈمنسٹریٹر کے جائزے کے لیے زیرِ التواء ہے۔ براہِ کرم منظوری تک انتظار فرمائیں۔`
+                    : `Account @${pendingWaitUser.username} is pending administrator review and approval. Please hold on.`}
+                </p>
+              </div>
+
+              {/* Summary Card */}
+              <div className="p-4 rounded-2xl neu-inset-sm text-right text-xs space-y-1.5 max-w-md mx-auto">
+                <div className="flex justify-between border-b border-black/5 dark:border-white/5 pb-1">
+                  <span className="font-bold text-[var(--text-secondary)]">{isUrdu ? 'صارف نام:' : 'Username:'}</span>
+                  <span className="font-mono font-bold text-[var(--accent-blue)]">@{pendingWaitUser.username}</span>
+                </div>
+                <div className="flex justify-between border-b border-black/5 dark:border-white/5 pb-1">
+                  <span className="font-bold text-[var(--text-secondary)]">{isUrdu ? 'پورا نام:' : 'Name:'}</span>
+                  <span className="font-bold text-[var(--text-main)]">{pendingWaitUser.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-bold text-[var(--text-secondary)]">{isUrdu ? 'حیثیت:' : 'Status:'}</span>
+                  <span className="font-bold text-amber-500 flex items-center gap-1">
+                    <Hourglass className="w-3.5 h-3.5" />
+                    <span>{isUrdu ? 'زیرِ جائزہ (Pending)' : 'Pending Review'}</span>
+                  </span>
+                </div>
+              </div>
+
+              {waitStatusMsg && (
+                <div className="p-3 rounded-2xl neu-inset-sm text-xs font-bold text-[var(--accent-blue)]">
+                  {waitStatusMsg}
+                </div>
+              )}
+
+              <div className="space-y-2.5 max-w-md mx-auto pt-2">
+                <button
+                  type="button"
+                  onClick={handleCheckApprovalStatus}
+                  disabled={isCheckingStatus}
+                  className="w-full py-3 px-4 rounded-2xl neu-btn text-xs font-black text-[var(--accent-blue)] flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isCheckingStatus ? 'animate-spin' : ''}`} />
+                  <span>{isUrdu ? 'منظوری کی حیثیت دوبارہ چیک کریں' : 'Check Approval Status'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPendingWaitUser(null);
+                    setWaitStatusMsg(null);
+                  }}
+                  className="text-xs text-[var(--text-secondary)] font-bold hover:text-[var(--accent-blue)] cursor-pointer"
+                >
+                  {isUrdu ? 'لاگ ان اسکرین پر واپس جائیں' : 'Back to Login Screen'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Dual-Tier Neumorphic Mode Switcher Pill */}
+              <div className="p-1.5 rounded-3xl neu-inset flex items-center gap-2">
             <button
               type="button"
               onClick={() => {
@@ -810,6 +886,8 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
                 </button>
               </div>
             </div>
+          )}
+            </>
           )}
 
         </div>
