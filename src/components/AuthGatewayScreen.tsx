@@ -24,7 +24,10 @@ import {
   ArrowRight,
   ArrowLeft,
   Building,
-  CheckCircle
+  CheckCircle,
+  Clock,
+  Hourglass,
+  RefreshCw
 } from 'lucide-react';
 import { UserRole, Language, Theme, UserAccount } from '../types';
 import { 
@@ -56,8 +59,7 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
 
   // Login Form State
-  const [selectedRolePreset, setSelectedRolePreset] = useState<UserRole>('superadmin');
-  const [username, setUsername] = useState<string>('Lukilion');
+  const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -73,30 +75,10 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
   const [regNotes, setRegNotes] = useState<string>('');
   const [regError, setRegError] = useState<string | null>(null);
 
-  // Registration Submission Success State
-  const [regSuccessData, setRegSuccessData] = useState<{
-    user: UserAccount;
-    mailtoUrl?: string;
-  } | null>(null);
-
-  // Handle Preset Role Selection in Login Mode
-  const handleSelectRolePreset = (role: UserRole) => {
-    setSelectedRolePreset(role);
-    setLoginError(null);
-    if (role === 'superadmin') {
-      setUsername('Lukilion');
-      setPassword('Lukilion@78612');
-    } else if (role === 'admin') {
-      setUsername('admin');
-      setPassword('admin123');
-    } else if (role === 'auditor') {
-      setUsername('auditor');
-      setPassword('audit123');
-    } else {
-      setUsername('buyer');
-      setPassword('');
-    }
-  };
+  // Pending Approval Waiting State for New or Pending Users
+  const [pendingWaitUser, setPendingWaitUser] = useState<UserAccount | null>(null);
+  const [waitStatusMsg, setWaitStatusMsg] = useState<string | null>(null);
+  const [isCheckingStatus, setIsCheckingStatus] = useState<boolean>(false);
 
   // Submit Login
   const handleLoginSubmit = (e: React.FormEvent) => {
@@ -109,27 +91,15 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
       return;
     }
 
-    // Buyer direct access
-    if (trimmedUser.toLowerCase() === 'buyer' && !password) {
-      const users = getStoredUsers();
-      const buyerUser = users.find((u) => u.role === 'buyer') || {
-        id: 'buyer-default',
-        username: 'buyer',
-        password: '',
-        name: 'Wholesale Buyer (خریدار)',
-        role: 'buyer' as UserRole,
-        canExportExcel: false,
-        canExportPdf: false,
-        canSendWhatsApp: true,
-        createdAt: '2026-09-10'
-      };
-      setCurrentUser(buyerUser);
-      onLoginSuccess(buyerUser);
-      return;
-    }
-
     const result = authenticateUser(trimmedUser, password);
     if (!result.success || !result.user) {
+      // If the user's registration is pending admin approval, direct them straight to the Waiting Message Screen
+      if (result.isPending && result.user) {
+        setPendingWaitUser(result.user);
+        setWaitStatusMsg(null);
+        return;
+      }
+
       setLoginError(
         result.error ||
           (isUrdu
@@ -143,7 +113,7 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
     onLoginSuccess(result.user);
   };
 
-  // Direct Quick Login as Role
+  // Direct Quick Login as Demo Role
   const handleQuickLoginAs = (role: UserRole) => {
     if (role === 'superadmin') {
       const res = authenticateUser('Lukilion', 'Lukilion@78612');
@@ -179,6 +149,52 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
       setCurrentUser(buyerUser);
       onLoginSuccess(buyerUser);
     }
+  };
+
+  // Live Check Approval Status for Pending Users
+  const handleCheckApprovalStatus = () => {
+    if (!pendingWaitUser) return;
+    setIsCheckingStatus(true);
+    setWaitStatusMsg(null);
+
+    setTimeout(() => {
+      setIsCheckingStatus(false);
+      const allUsers = getStoredUsers();
+      const freshUser = allUsers.find(
+        (u) =>
+          u.id === pendingWaitUser.id ||
+          u.username.trim().toLowerCase() === pendingWaitUser.username.trim().toLowerCase()
+      );
+
+      if (!freshUser) {
+        setWaitStatusMsg(isUrdu ? 'صارف کا ریکارڈ دستیاب نہیں ہے' : 'User record not found');
+        return;
+      }
+
+      if (freshUser.status === 'active') {
+        setWaitStatusMsg(
+          isUrdu
+            ? '🎉 مبارک ہو! ایڈمن کی جانب سے آپ کی رسائی منظور کر دی گئی ہے۔ سسٹم میں داخل ہو رہے ہیں...'
+            : '🎉 Approved! Your access has been granted by administrator. Entering system...'
+        );
+        setTimeout(() => {
+          setCurrentUser(freshUser);
+          onLoginSuccess(freshUser);
+        }, 1200);
+      } else if (freshUser.status === 'rejected') {
+        setWaitStatusMsg(
+          isUrdu
+            ? '❌ معذرت، ایڈمنسٹریٹر نے آپ کی رجسٹریشن درخواست مسترد کر دی ہے۔'
+            : '❌ Your registration request was declined by the administrator.'
+        );
+      } else {
+        setWaitStatusMsg(
+          isUrdu
+            ? '⏳ آپ کی درخواست ابھی تک ایڈمنسٹریٹر کے جائزے میں ہے۔ براہِ کرم انتظار فرمائیں۔'
+            : '⏳ Your request is still pending administrator review. Please hold on and wait.'
+        );
+      }
+    }, 600);
   };
 
   // Submit Registration
@@ -218,10 +234,9 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
       return;
     }
 
-    setRegSuccessData({
-      user: regResult.user,
-      mailtoUrl: regResult.mailtoUrl
-    });
+    // New user will only see a waiting message asking them to hold and wait until their access is approved and granted
+    setPendingWaitUser(regResult.user);
+    setWaitStatusMsg(null);
   };
 
   return (
@@ -353,83 +368,11 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
           </div>
 
           {/* ========================================================================= */}
-          {/* TAB 1: LOGIN (لاگ ان کریں) */}
+          {/* TAB 1: LOGIN (لاگ ان کریں - Account Level Option Removed as Requested) */}
           {/* ========================================================================= */}
           {authMode === 'login' && (
             <div className="space-y-5 animate-in fade-in duration-200">
               
-              {/* Quick Role Selector Cards for instant demo testing & role presets */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs font-bold text-[var(--text-secondary)] px-1">
-                  <span>{isUrdu ? 'فوری رول کا انتخاب / ڈیمو ٹیسٹنگ:' : 'Quick Role Preset / Demo Access:'}</span>
-                  <span className="text-[11px] text-[var(--accent-blue)] font-medium">
-                    {isUrdu ? 'رول منتخب کریں اور داخل ہوں' : 'Select role to autofill'}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {/* Super Admin */}
-                  <button
-                    type="button"
-                    onClick={() => handleSelectRolePreset('superadmin')}
-                    className={`p-3 rounded-2xl transition-all text-center flex flex-col items-center gap-1 cursor-pointer ${
-                      selectedRolePreset === 'superadmin'
-                        ? 'neu-btn text-amber-600 dark:text-amber-400 font-black shadow-inner ring-2 ring-amber-500/30'
-                        : 'neu-raised text-[var(--text-secondary)] hover:text-[var(--text-main)]'
-                    }`}
-                  >
-                    <Crown className="w-5 h-5 text-amber-500" />
-                    <span className="text-xs font-black">{isUrdu ? 'سپر ایڈمن' : 'Super Admin'}</span>
-                    <span className="text-[10px] font-mono opacity-80">@Lukilion</span>
-                  </button>
-
-                  {/* Admin */}
-                  <button
-                    type="button"
-                    onClick={() => handleSelectRolePreset('admin')}
-                    className={`p-3 rounded-2xl transition-all text-center flex flex-col items-center gap-1 cursor-pointer ${
-                      selectedRolePreset === 'admin'
-                        ? 'neu-btn text-[var(--accent-blue)] font-black shadow-inner ring-2 ring-[var(--accent-blue)]/30'
-                        : 'neu-raised text-[var(--text-secondary)] hover:text-[var(--text-main)]'
-                    }`}
-                  >
-                    <ShieldCheck className="w-5 h-5 text-[var(--accent-blue)]" />
-                    <span className="text-xs font-black">{isUrdu ? 'ایڈمن' : 'Admin'}</span>
-                    <span className="text-[10px] font-mono opacity-80">@admin</span>
-                  </button>
-
-                  {/* Auditor */}
-                  <button
-                    type="button"
-                    onClick={() => handleSelectRolePreset('auditor')}
-                    className={`p-3 rounded-2xl transition-all text-center flex flex-col items-center gap-1 cursor-pointer ${
-                      selectedRolePreset === 'auditor'
-                        ? 'neu-btn text-purple-600 dark:text-purple-400 font-black shadow-inner ring-2 ring-purple-500/30'
-                        : 'neu-raised text-[var(--text-secondary)] hover:text-[var(--text-main)]'
-                    }`}
-                  >
-                    <FileSpreadsheet className="w-5 h-5 text-purple-500" />
-                    <span className="text-xs font-black">{isUrdu ? 'آڈیٹر' : 'Auditor'}</span>
-                    <span className="text-[10px] font-mono opacity-80">@auditor</span>
-                  </button>
-
-                  {/* Buyer */}
-                  <button
-                    type="button"
-                    onClick={() => handleSelectRolePreset('buyer')}
-                    className={`p-3 rounded-2xl transition-all text-center flex flex-col items-center gap-1 cursor-pointer ${
-                      selectedRolePreset === 'buyer'
-                        ? 'neu-btn text-emerald-600 dark:text-emerald-400 font-black shadow-inner ring-2 ring-emerald-500/30'
-                        : 'neu-raised text-[var(--text-secondary)] hover:text-[var(--text-main)]'
-                    }`}
-                  >
-                    <ShoppingBag className="w-5 h-5 text-emerald-500" />
-                    <span className="text-xs font-black">{isUrdu ? 'خریدار' : 'Buyer'}</span>
-                    <span className="text-[10px] font-mono opacity-80">@buyer</span>
-                  </button>
-                </div>
-              </div>
-
               {/* Error Message Feedback */}
               {loginError && (
                 <div className="p-3 rounded-2xl neu-inset-sm flex items-center gap-2.5 text-rose-500 text-xs font-bold animate-in shake">
@@ -440,69 +383,59 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
 
               {/* Login Form */}
               <form onSubmit={handleLoginSubmit} className="space-y-4">
-                {/* Username */}
+                {/* Username Field */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-extrabold text-[var(--text-secondary)] px-1 flex items-center justify-between">
+                  <label htmlFor="auth-username-field" className="text-xs font-extrabold text-[var(--text-secondary)] flex items-center gap-1.5 px-1">
+                    <User className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
                     <span>{isUrdu ? 'صارف کا نام (Username)' : 'Username'}</span>
-                    <span className="text-[11px] font-mono text-[var(--accent-blue)]">
-                      {selectedRolePreset === 'superadmin'
-                        ? 'Super Admin Account'
-                        : selectedRolePreset === 'admin'
-                        ? 'Operational Manager'
-                        : selectedRolePreset === 'auditor'
-                        ? 'Financial Auditor'
-                        : 'Wholesale Buyer'}
-                    </span>
                   </label>
+
                   <div className="relative flex items-center">
                     <div className="absolute right-3.5 text-[var(--text-secondary)] pointer-events-none">
                       <User className="w-4 h-4" />
                     </div>
                     <input
+                      id="auth-username-field"
                       type="text"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      placeholder={isUrdu ? 'صارف کا نام درج کریں' : 'Enter username'}
+                      placeholder="Username Here"
                       className="w-full pr-10 pl-4 py-3 rounded-2xl neu-inset text-sm font-extrabold text-[var(--text-main)] placeholder:text-[var(--text-secondary)]/50 focus:outline-hidden focus:ring-2 focus:ring-[var(--accent-blue)]/30 transition"
                       required
                     />
                   </div>
                 </div>
 
-                {/* Password (if not buyer) */}
-                {selectedRolePreset !== 'buyer' && (
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between px-1">
-                      <label className="text-xs font-extrabold text-[var(--text-secondary)]">
-                        {isUrdu ? 'پاس ورڈ (Password)' : 'Password'}
-                      </label>
-                      <span className="text-[10px] text-[var(--text-secondary)] font-mono">
-                        {username === 'Lukilion' ? 'Default: Lukilion@78612' : username === 'admin' ? 'Default: admin123' : username === 'auditor' ? 'Default: audit123' : ''}
-                      </span>
-                    </div>
-                    <div className="relative flex items-center">
-                      <div className="absolute right-3.5 text-[var(--text-secondary)] pointer-events-none">
-                        <KeyRound className="w-4 h-4" />
-                      </div>
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder={isUrdu ? 'پاس ورڈ درج کریں' : 'Enter password'}
-                        className="w-full pr-10 pl-11 py-3 rounded-2xl neu-inset text-sm font-extrabold text-[var(--text-main)] placeholder:text-[var(--text-secondary)]/50 focus:outline-hidden focus:ring-2 focus:ring-[var(--accent-blue)]/30 transition font-mono"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute left-3.5 text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer"
-                        title={showPassword ? 'پاس ورڈ چھپائیں' : 'پاس ورڈ دکھائیں'}
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
+                {/* Password Field */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between px-1">
+                    <label className="text-xs font-extrabold text-[var(--text-secondary)] flex items-center gap-1.5">
+                      <KeyRound className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
+                      <span>{isUrdu ? 'پاس ورڈ (Password)' : 'Password'}</span>
+                    </label>
                   </div>
-                )}
+                  <div className="relative flex items-center">
+                    <div className="absolute right-3.5 text-[var(--text-secondary)] pointer-events-none">
+                      <KeyRound className="w-4 h-4" />
+                    </div>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder={isUrdu ? 'پاس ورڈ درج کریں' : 'Enter password'}
+                      className="w-full pr-10 pl-11 py-3 rounded-2xl neu-inset text-sm font-extrabold text-[var(--text-main)] placeholder:text-[var(--text-secondary)]/50 focus:outline-hidden focus:ring-2 focus:ring-[var(--accent-blue)]/30 transition font-mono"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute left-3.5 text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer"
+                      title={showPassword ? 'پاس ورڈ چھپائیں' : 'پاس ورڈ دکھائیں'}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
 
                 {/* Submit Login Button */}
                 <button
@@ -510,50 +443,24 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
                   className="w-full py-3.5 px-6 rounded-2xl neu-btn text-sm font-black text-[var(--accent-blue)] hover:text-[var(--accent-blue)] flex items-center justify-center gap-2 cursor-pointer transition shadow-md group mt-2"
                 >
                   <LogIn className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                  <span>
-                    {selectedRolePreset === 'buyer'
-                      ? (isUrdu ? 'بطور خریدار براہِ راست داخل ہوں (Enter as Buyer)' : 'Enter as Wholesale Buyer')
-                      : (isUrdu ? 'لاگ ان کریں اور سسٹم میں داخل ہوں' : 'Log In & Access BOS')}
-                  </span>
+                  <span>{isUrdu ? 'لاگ ان کریں اور سسٹم میں داخل ہوں' : 'Sign In to System'}</span>
                   {isUrdu ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
                 </button>
               </form>
 
-              {/* Direct 1-Click Entry for Tester Convenience */}
+              {/* Super Admin Demo Hint & Fast Login */}
               <div className="pt-2 border-t border-black/5 dark:border-white/5 flex flex-wrap items-center justify-between gap-2 text-xs">
-                <span className="text-[var(--text-secondary)] font-medium">
-                  {isUrdu ? 'ایک کلک میں فوری داخلہ:' : 'Instant 1-Click Demo Entry:'}
+                <span className="text-[11px] text-[var(--text-secondary)] font-medium">
+                  👑 {isUrdu ? 'سپر ایڈمن ڈیمو:' : 'Super Admin Demo:'}{' '}
+                  <span className="font-mono font-bold text-amber-600 dark:text-amber-400">@Lukilion</span>
                 </span>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => handleQuickLoginAs('superadmin')}
-                    className="px-2.5 py-1 rounded-xl neu-btn text-[11px] font-bold text-amber-600 dark:text-amber-400 cursor-pointer"
-                  >
-                    👑 Lukilion
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickLoginAs('admin')}
-                    className="px-2.5 py-1 rounded-xl neu-btn text-[11px] font-bold text-[var(--accent-blue)] cursor-pointer"
-                  >
-                    🛡️ Admin
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickLoginAs('auditor')}
-                    className="px-2.5 py-1 rounded-xl neu-btn text-[11px] font-bold text-purple-600 cursor-pointer"
-                  >
-                    📊 Auditor
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickLoginAs('buyer')}
-                    className="px-2.5 py-1 rounded-xl neu-btn text-[11px] font-bold text-emerald-600 cursor-pointer"
-                  >
-                    🛍️ Buyer
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => handleQuickLoginAs('superadmin')}
+                  className="px-2.5 py-1 rounded-xl neu-btn text-[11px] font-bold text-amber-600 dark:text-amber-400 cursor-pointer hover:underline"
+                >
+                  {isUrdu ? 'ڈیمو خودکار لاگ ان' : 'Demo Auto-Fill'}
+                </button>
               </div>
 
               {/* Switch to Register footer */}

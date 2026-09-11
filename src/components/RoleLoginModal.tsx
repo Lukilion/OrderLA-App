@@ -392,7 +392,7 @@ export const RoleLoginModal: React.FC<RoleLoginModalProps> = ({
                     required
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Username"
+                    placeholder="Username Here"
                     className="w-full py-2.5 px-3.5 pr-10 rounded-2xl neu-input text-xs sm:text-sm font-bold text-[var(--text-main)]"
                   />
                   <User className="w-4 h-4 text-[var(--text-secondary)] absolute top-3.5 right-3 pointer-events-none" />

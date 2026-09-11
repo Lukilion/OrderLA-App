@@ -146,7 +146,13 @@ export function getCurrentUser(): UserAccount | null {
       // Verify against fresh stored users list
       const users = getStoredUsers();
       const matched = users.find((u) => u.id === user.id);
-      if (matched) return matched;
+      if (matched) {
+        // Prevent access if user is still pending or was rejected
+        if (matched.status === 'pending' || matched.status === 'rejected') {
+          return null;
+        }
+        return matched;
+      }
     }
   } catch {
     /* fallback */
@@ -188,6 +194,13 @@ export function logoutUser(): void {
 export function getPendingRegistrations(): UserAccount[] {
   const users = getStoredUsers();
   return users.filter((u) => u.status === 'pending');
+}
+
+/**
+ * Get count of pending registration requests
+ */
+export function getPendingCount(): number {
+  return getPendingRegistrations().length;
 }
 
 /**
@@ -398,7 +411,13 @@ export function rejectUserRegistration(
 export function authenticateUser(
   username: string,
   pass: string
-): { success: boolean; user?: UserAccount; error?: string } {
+): { 
+  success: boolean; 
+  user?: UserAccount; 
+  error?: string;
+  isPending?: boolean;
+  isRejected?: boolean;
+} {
   const users = getStoredUsers();
   const matched = users.find(
     (u) => u.username.trim().toLowerCase() === username.trim().toLowerCase()
@@ -411,6 +430,26 @@ export function authenticateUser(
   // If user has a password, verify it exactly
   if (matched.password && matched.password !== pass.trim()) {
     return { success: false, error: 'غلط پاس ورڈ (Incorrect password)' };
+  }
+
+  // Security Check: Pending approval accounts cannot enter the app
+  if (matched.status === 'pending') {
+    return {
+      success: false,
+      isPending: true,
+      user: matched,
+      error: 'آپ کی درخواست ایڈمنسٹریٹر کی حتمی منظوری کے انتظار میں ہے۔ براہِ کرم انتظار فرمائیں۔ (Your registration is pending approval by Super Admin or Admin. Please wait until access is granted.)'
+    };
+  }
+
+  // Rejected accounts
+  if (matched.status === 'rejected') {
+    return {
+      success: false,
+      isRejected: true,
+      user: matched,
+      error: 'آپ کی رجسٹریشن درخواست ایڈمنسٹریٹر نے مسترد کر دی ہے۔ (Your registration was declined by administrator.)'
+    };
   }
 
   setCurrentUser(matched);

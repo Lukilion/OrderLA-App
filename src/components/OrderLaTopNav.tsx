@@ -17,7 +17,8 @@ import {
   UserPlus,
   ShoppingBag,
   FileSpreadsheet,
-  LogOut
+  LogOut,
+  Bell
 } from 'lucide-react';
 import { NavRoute, UserRole, Language, UserAccount } from '../types';
 
@@ -29,6 +30,8 @@ interface OrderLaTopNavProps {
   currentUser: UserAccount;
   onRequestRoleSwitch: (role: UserRole) => void;
   onOpenSuperAdminConsole?: () => void;
+  onOpenApprovals?: () => void;
+  pendingApprovalsCount?: number;
   onLogout?: () => void;
   language: Language;
   itemsCount: {
@@ -48,6 +51,8 @@ export const OrderLaTopNav: React.FC<OrderLaTopNavProps> = ({
   currentUser,
   onRequestRoleSwitch,
   onOpenSuperAdminConsole,
+  onOpenApprovals,
+  pendingApprovalsCount = 0,
   onLogout,
   language,
   itemsCount
@@ -167,6 +172,27 @@ export const OrderLaTopNav: React.FC<OrderLaTopNavProps> = ({
 
         {/* Role Selector & User Profile Strip */}
         <div className="hidden md:flex items-center gap-2 shrink-0">
+          {/* Notification Bell Icon for Super Admin & Admin to approve incoming requests */}
+          {canManageUsers && onOpenApprovals && (
+            <button
+              type="button"
+              onClick={onOpenApprovals}
+              className="relative p-2 rounded-2xl neu-raised text-[var(--text-secondary)] hover:text-amber-500 hover:scale-105 active:scale-95 transition cursor-pointer flex items-center justify-center"
+              title={
+                isUrdu
+                  ? `منظوری کی درخواستیں (${pendingApprovalsCount} زیرِ التواء)`
+                  : `Incoming Access Requests (${pendingApprovalsCount} Pending)`
+              }
+            >
+              <Bell className={`w-4 h-4 ${pendingApprovalsCount > 0 ? 'text-amber-500 animate-bounce' : ''}`} />
+              {pendingApprovalsCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-amber-500 text-white font-mono text-[10px] font-black rounded-full flex items-center justify-center shadow-xs animate-pulse">
+                  {pendingApprovalsCount}
+                </span>
+              )}
+            </button>
+          )}
+
           {/* Add User & Authority Console Trigger Button (Visible only in Super Admin or Admin mode) */}
           {canManageUsers && onOpenSuperAdminConsole && (
             <button
@@ -258,6 +284,23 @@ export const OrderLaTopNav: React.FC<OrderLaTopNavProps> = ({
 
         {/* Mobile Navigation Dropdown Button (visible on screens < lg) */}
         <div className="lg:hidden flex items-center gap-2" ref={mobileMenuRef}>
+          {/* Mobile Notification Bell */}
+          {canManageUsers && onOpenApprovals && (
+            <button
+              type="button"
+              onClick={onOpenApprovals}
+              className="relative p-2 rounded-2xl neu-raised border border-amber-500/30 text-amber-500 flex items-center justify-center cursor-pointer"
+              title={isUrdu ? `درخواستیں (${pendingApprovalsCount})` : `Requests (${pendingApprovalsCount})`}
+            >
+              <Bell className="w-4 h-4" />
+              {pendingApprovalsCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-0.5 bg-amber-500 text-white font-mono text-[9px] font-black rounded-full flex items-center justify-center">
+                  {pendingApprovalsCount}
+                </span>
+              )}
+            </button>
+          )}
+
           {canManageUsers && onOpenSuperAdminConsole && (
             <button
               onClick={onOpenSuperAdminConsole}
