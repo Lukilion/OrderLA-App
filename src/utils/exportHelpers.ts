@@ -58,6 +58,9 @@ export function exportWholesaleExcel(items: WholesaleItem[], language: Language)
   XLSX.writeFile(workbook, "OrderLA_Master_Rate_and_Demand_Sheet.xlsx");
 }
 
+// Alias for seamless interoperability across modules
+export const exportToExcel = exportWholesaleExcel;
+
 export function generateWhatsAppOrderText(items: WholesaleItem[], language: Language): string {
   const isUrdu = language === 'ur';
 

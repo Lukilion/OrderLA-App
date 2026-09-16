@@ -18,9 +18,15 @@ import {
   Eraser,
   Sparkles,
   RefreshCw,
-  Menu
+  Menu,
+  MoreVertical,
+  FileText,
+  History,
+  Home,
+  Bell,
+  User
 } from 'lucide-react';
-import { Language, Theme } from '../types';
+import { Language, Theme, PrimaryNavTab } from '../types';
 
 interface TopControlBarProps {
   theme: Theme;
@@ -42,6 +48,9 @@ interface TopControlBarProps {
   onOpenBackupUpdate?: () => void;
   onOpenMobileMenu?: () => void;
   canAddItem?: boolean;
+  activeTab?: PrimaryNavTab;
+  onSelectTab?: (tab: PrimaryNavTab) => void;
+  unreadNotificationsCount?: number;
 }
 
 export const TopControlBar: React.FC<TopControlBarProps> = ({
@@ -63,7 +72,10 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
   onExecutePdfPrint,
   onOpenBackupUpdate,
   onOpenMobileMenu,
-  canAddItem = true
+  canAddItem = true,
+  activeTab = 'home',
+  onSelectTab,
+  unreadNotificationsCount = 0
 }) => {
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const [isEditSubOpen, setIsEditSubOpen] = useState(false);
@@ -106,18 +118,23 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
 
   return (
     <header className="neu-raised-lg rounded-3xl p-4 sm:p-6 transition-all no-print">
-      {/* Top Utility Strip */}
-      <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-black/5 dark:border-white/10" dir="ltr">
-        {/* TOP LEFT: Mobile Drawer Menu Button + Sun/Moon Only Theme Switcher */}
+      {/* Top Utility Strip - In Urdu view (RTL), Navigation Triple Dot is on the Right */}
+      <div 
+        className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-black/5 dark:border-white/10" 
+        dir={isUrdu ? 'rtl' : 'ltr'}
+      >
+        {/* Navigation Triple Dot Menu Button + Sun/Moon Theme Switcher */}
         <div className="flex items-center gap-2">
           {onOpenMobileMenu && (
             <button
+              id="topNavTripleDotBtn"
               type="button"
               onClick={onOpenMobileMenu}
-              className="lg:hidden p-2 rounded-2xl neu-raised-flat text-[var(--text-main)] hover:text-[var(--accent-blue)] active:neu-inset-sunken transition cursor-pointer flex items-center justify-center"
-              title="Open Navigation Menu"
+              className="p-2 rounded-2xl neu-raised-flat text-[var(--text-main)] hover:text-[var(--accent-blue)] active:neu-inset-sunken transition cursor-pointer flex items-center justify-center"
+              title={isUrdu ? 'نیویگیشن مینو' : 'Open Navigation Menu'}
+              aria-label={isUrdu ? 'نیویگیشن مینو' : 'Open Navigation Menu'}
             >
-              <Menu className="w-4 h-4" />
+              <MoreVertical className="w-4 h-4" />
             </button>
           )}
 
@@ -150,6 +167,69 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
             </button>
           </div>
         </div>
+
+        {/* CENTER: Desktop Navigation Bar (Icons Only matching Mobile View) */}
+        {onSelectTab && (
+          <nav 
+            className="hidden md:flex items-center gap-1.5 p-1 rounded-2xl neu-inset-sm select-none"
+            aria-label="Desktop Top Navigation"
+          >
+            {[
+              { id: 'saved-orders', labelEn: 'Saved Order', labelUrdu: 'محفوظ آرڈر', icon: FileText },
+              { id: 'history', labelEn: 'History', labelUrdu: 'تاریخچہ', icon: History },
+              { id: 'home', labelEn: 'Home', labelUrdu: 'ہوم', icon: Home, isCenter: true },
+              { id: 'notifications', labelEn: 'Notifications', labelUrdu: 'اطلاعات', icon: Bell },
+              { id: 'profile', labelEn: 'Profile', labelUrdu: 'پروفائل', icon: User }
+            ].map((tab) => {
+              const isActive = activeTab === tab.id;
+              const Icon = tab.icon;
+              const title = isUrdu ? tab.labelUrdu : tab.labelEn;
+
+              if (tab.isCenter) {
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => onSelectTab(tab.id as PrimaryNavTab)}
+                    title={title}
+                    aria-label={title}
+                    className={`relative w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer border-2 select-none ${
+                      isActive
+                        ? 'border-[var(--accent-blue)] bg-[var(--bg-canvas)] text-[var(--accent-blue)] shadow-[0_2px_10px_rgba(10,132,255,0.25)] scale-105 neu-raised'
+                        : 'border-transparent text-[var(--text-secondary)] hover:border-[var(--accent-blue)]/40 hover:text-[var(--accent-blue)]'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 sm:w-4.5 sm:h-4.5" strokeWidth={2.2} />
+                  </button>
+                );
+              }
+
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => onSelectTab(tab.id as PrimaryNavTab)}
+                  title={title}
+                  aria-label={title}
+                  className={`relative p-2 rounded-xl transition-all duration-200 cursor-pointer flex items-center justify-center select-none ${
+                    isActive
+                      ? 'neu-raised bg-[var(--bg-canvas)] text-[var(--accent-blue)] font-black scale-105'
+                      : 'text-[var(--text-secondary)] hover:text-[var(--text-main)] hover:bg-black/5 dark:hover:bg-white/5'
+                  }`}
+                >
+                  <Icon className="w-4 h-4 sm:w-4.5 sm:h-4.5" strokeWidth={isActive ? 2.3 : 2} />
+                  {tab.id === 'notifications' && unreadNotificationsCount > 0 && (
+                    <span
+                      className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-rose-500 text-white text-[9px] font-mono font-bold rounded-full flex items-center justify-center shadow-xs"
+                    >
+                      {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+        )}
 
         {/* Top Right: Language Switcher Pill */}
         <div className="flex items-center gap-2">
@@ -185,12 +265,6 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
           <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-[var(--text-main)] urdu-title leading-relaxed">
             {isUrdu ? 'ڈیمانڈ شیٹ (Demand Sheet)' : 'Wholesale Demand Sheet'}
           </h1>
-
-          <p className="text-xs md:text-sm text-[var(--text-secondary)] mt-0.5 font-medium max-w-2xl">
-            {isUrdu
-              ? 'اپنے مطلوبہ مال کا اندراج کریں، اسٹاک اور ڈیمانڈ کی بنیاد پر آرڈر کی منصوبہ بندی کریں، اور متوقع خریداری بجٹ کا حساب لگائیں۔'
-              : 'Record inventory demands, manage wholesale rates, plan stock replenishment, and compute projected procurement budget.'}
-          </p>
 
           {/* ACTIONS BUTTON UNDER DEMAND SHEET WITH ALL 6 OPERATIONS HIDDEN INSIDE */}
           <div className="pt-1.5 relative inline-block text-right rtl:text-right" ref={actionsRef}>

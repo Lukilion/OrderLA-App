@@ -29,9 +29,9 @@ export const FloatingSwiperButton: React.FC<FloatingSwiperButtonProps> = ({
     } catch {
       /* ignore fallback */
     }
-    // Default initial location: on the right side in front of the Demand sheet
+    // Default initial location: on the right side in front of the Demand sheet, above mobile bottom nav
     const defaultX = typeof window !== 'undefined' ? Math.max(window.innerWidth - 90, 20) : 300;
-    const defaultY = typeof window !== 'undefined' ? Math.max(window.innerHeight - 150, 100) : 400;
+    const defaultY = typeof window !== 'undefined' ? Math.max(window.innerHeight - 180, 100) : 400;
     return { x: defaultX, y: defaultY };
   });
 
@@ -52,13 +52,14 @@ export const FloatingSwiperButton: React.FC<FloatingSwiperButtonProps> = ({
 
   const buttonRef = useRef<HTMLDivElement>(null);
 
-  // Keep within screen boundaries on resize
+  // Keep within screen boundaries on resize (above mobile bottom bar)
   useEffect(() => {
     const handleResize = () => {
       setPosition((prev) => {
         const btnSize = 64;
+        const bottomNavOffset = window.innerWidth < 768 ? 85 : 20;
         const maxX = Math.max(window.innerWidth - btnSize - 16, 16);
-        const maxY = Math.max(window.innerHeight - btnSize - 16, 16);
+        const maxY = Math.max(window.innerHeight - btnSize - bottomNavOffset, 16);
         const clampedX = Math.min(Math.max(prev.x, 16), maxX);
         const clampedY = Math.min(Math.max(prev.y, 16), maxY);
         return { x: clampedX, y: clampedY };

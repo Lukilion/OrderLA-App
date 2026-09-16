@@ -145,10 +145,10 @@ export const NeumorphicSidebar: React.FC<NeumorphicSidebarProps> = ({
   const sidebarContent = (
     <div className="flex flex-col h-full select-none justify-between overflow-hidden">
       {/* 1. Header & Brand Surface */}
-      <div className="pt-4 pb-3 px-3 shrink-0">
-        <div className="flex items-center justify-between gap-2">
+      <div className={`pt-4 pb-3 ${isCollapsed ? 'px-2' : 'px-3'} shrink-0`}>
+        <div className={`flex items-center ${isCollapsed ? 'flex-col gap-2.5 justify-center' : 'justify-between gap-2'}`}>
           {/* Brand Logo & Tagline */}
-          <div className="flex items-center gap-3 overflow-hidden cursor-pointer" onClick={() => onSelectRoute('demand-sheet')}>
+          <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} overflow-hidden cursor-pointer`} onClick={() => onSelectRoute('demand-sheet')}>
             <div className="shrink-0 p-1.5 rounded-2xl neu-raised-flat transition-transform hover:scale-105 active:scale-95">
               <OrderLaLogo variant="icon" size="sm" />
             </div>
@@ -406,7 +406,7 @@ export const NeumorphicSidebar: React.FC<NeumorphicSidebarProps> = ({
         role="navigation"
         aria-label="Enterprise Wholesale BOS Navigation"
         className={`hidden lg:flex flex-col shrink-0 sticky top-4 h-[calc(100vh-2rem)] rounded-3xl neu-raised-flat transition-all duration-300 z-30 ${
-          isCollapsed ? 'w-20' : 'w-64 xl:w-72'
+          isCollapsed ? 'w-24 xl:w-[6.5rem]' : 'w-64 xl:w-72'
         }`}
       >
         {sidebarContent}

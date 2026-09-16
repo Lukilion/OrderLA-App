@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { WholesaleItem, UserRole, Language, Theme, FilterType, SortKey, SortDirection, UserAccount } from './types';
+import { WholesaleItem, UserRole, Language, Theme, FilterType, SortKey, SortDirection, UserAccount, PrimaryNavTab } from './types';
 import { DEFAULT_MASTER_ITEMS, NAV_ROUTES } from './data/masterItems';
 import { OrderLaTopNav } from './components/OrderLaTopNav';
 import { NeumorphicSidebar } from './components/NeumorphicSidebar';
@@ -19,10 +19,17 @@ import { WhatsAppRecipientModal } from './components/WhatsAppRecipientModal';
 import { AccessDeniedModal } from './components/AccessDeniedModal';
 import { PendingApprovalsModal } from './components/PendingApprovalsModal';
 import { FloatingSwiperButton } from './components/FloatingSwiperButton';
+import { MobileBottomNav } from './components/MobileBottomNav';
+import { SavedOrdersView } from './components/SavedOrdersView';
+import { HistoryView } from './components/HistoryView';
+import { NotificationsView } from './components/NotificationsView';
+import { ProfileView } from './components/ProfileView';
 import { Toast } from './components/Toast';
 import { AuthGatewayScreen } from './components/AuthGatewayScreen';
 import { exportWholesaleExcel } from './utils/exportHelpers';
 import { getCurrentUser, hasExportPermission, getStoredUsers, setCurrentUser as persistCurrentUser, logoutUser, getPendingCount } from './utils/authManager';
+import { addAuditHistoryEntry } from './utils/historyManager';
+import { generateLiveNotifications } from './utils/notificationsManager';
 import { ChevronDown } from 'lucide-react';
 
 export function App() {
@@ -60,6 +67,8 @@ export function App() {
 
   // Navigation State
   const [activeRoute, setActiveRoute] = useState<string>('demand-sheet');
+  const [primaryTab, setPrimaryTab] = useState<PrimaryNavTab>('home');
+  const [notificationsTick, setNotificationsTick] = useState<number>(0);
   const [language, setLanguage] = useState<Language>('ur');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     try {
@@ -148,6 +157,15 @@ export function App() {
     document.documentElement.lang = language;
   }, [language]);
 
+  // Live Notifications Feed & Badge Count
+  const liveNotifications = useMemo(() => {
+    return generateLiveNotifications(items, pendingApprovalsCount);
+  }, [items, pendingApprovalsCount, notificationsTick]);
+
+  const unreadNotificationsCount = useMemo(() => {
+    return liveNotifications.filter((n) => !n.isRead).length;
+  }, [liveNotifications]);
+
   // Show Toast Helper
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
@@ -233,6 +251,7 @@ export function App() {
         return;
       }
 
+      const currentItem = items.find((i) => i.id === id);
       const updated = items.map((item) => {
         if (item.id === id) {
           return { ...item, [field]: value };
@@ -240,6 +259,30 @@ export function App() {
         return item;
       });
       commitItemsChange(updated);
+
+      if (field === 'demand' && currentItem && String(currentItem.demand) !== String(value)) {
+        addAuditHistoryEntry({
+          actionType: 'demand_change',
+          userName: currentUser?.name || 'User',
+          userRole: userRole,
+          descriptionEn: `Updated demand for "${currentItem.name}" to ${value}`,
+          descriptionUrdu: `"${currentItem.name}" کی طلب ${value} درج کی گئی`,
+          affectedItem: currentItem.name,
+          oldValue: String(currentItem.demand || 0),
+          newValue: String(value)
+        });
+      } else if (field === 'rate' && currentItem && String(currentItem.rate) !== String(value)) {
+        addAuditHistoryEntry({
+          actionType: 'rate_change',
+          userName: currentUser?.name || 'User',
+          userRole: userRole,
+          descriptionEn: `Updated wholesale rate for "${currentItem.name}" to Rs. ${value}`,
+          descriptionUrdu: `"${currentItem.name}" کا ہول سیل ریٹ Rs. ${value} کیا گیا`,
+          affectedItem: currentItem.name,
+          oldValue: String(currentItem.rate || 0),
+          newValue: String(value)
+        });
+      }
     },
     [items, commitItemsChange, userRole, showToast, language]
   );
@@ -308,6 +351,25 @@ export function App() {
       language === 'ur'
         ? 'سوائپر سے منتخب کردہ ڈیمانڈ ماسٹر شیٹ میں لاگو ہو گئی!'
         : 'Demands from Swiper mode applied to main sheet!'
+    );
+  };
+
+  // Load saved order into active sheet
+  const handleLoadOrderToSheet = (orderItems: WholesaleItem[], orderTitle: string) => {
+    commitItemsChange(orderItems);
+    setIsListVisible(true);
+    setPrimaryTab('home');
+    addAuditHistoryEntry({
+      actionType: 'demand_change',
+      userName: currentUser?.name || 'User',
+      userRole: userRole,
+      descriptionEn: `Loaded saved order "${orderTitle}" into active sheet (${orderItems.length} items)`,
+      descriptionUrdu: `محفوظ شدہ آرڈر "${orderTitle}" ایکٹو شیٹ میں لوڈ کیا گیا (${orderItems.length} اشیاء)`
+    });
+    showToast(
+      language === 'ur'
+        ? `آرڈر "${orderTitle}" کامیابی سے شیٹ میں لوڈ ہو گیا!`
+        : `Order "${orderTitle}" loaded into active sheet!`
     );
   };
 
@@ -480,7 +542,8 @@ export function App() {
       setIsSuperAdminConsoleOpen(true);
       return;
     }
-    if (['priority-orders', 'low-stock', 'shalmi-market', 'kashif-wholesale'].includes(routeId)) {
+    if (['demand-sheet', 'priority-orders', 'low-stock', 'shalmi-market', 'kashif-wholesale'].includes(routeId)) {
+      setPrimaryTab('home');
       setIsListVisible(true);
     }
     setActiveRoute(routeId);
@@ -646,7 +709,7 @@ export function App() {
   }
 
   return (
-    <div className="w-full min-h-screen bg-[var(--bg-canvas)] text-[var(--text-main)] transition-colors duration-200 py-2 sm:py-4 px-2 sm:px-4 lg:px-6 xl:px-8 selection:bg-[var(--accent-blue)] selection:text-white relative">
+    <div className="w-full min-h-screen bg-[var(--bg-canvas)] text-[var(--text-main)] transition-colors duration-200 pt-2 sm:pt-4 pb-24 md:pb-6 px-2 sm:px-4 lg:px-6 xl:px-8 selection:bg-[var(--accent-blue)] selection:text-white relative">
       
       {/* Movable Floating Circular Swiper Button: positioned in front of Demand sheet, fixed so it remains in exact place on screen even while scrolling */}
       <FloatingSwiperButton
@@ -678,7 +741,7 @@ export function App() {
 
         {/* Dual-Tier Tier 2: Main Operations Workspace */}
         <div className="flex-1 min-w-0 space-y-4 sm:space-y-6">
-          {/* Tier 2: Top Utility & Control Bar with Theme Switcher, Quick Swiper, Export & Print */}
+          {/* Tier 2: Top Utility & Control Bar with Theme Switcher, Quick Swiper, Export & Print, and Center Desktop Navigation */}
           <TopControlBar
             theme={theme}
             onToggleTheme={setTheme}
@@ -697,124 +760,179 @@ export function App() {
             onCopyWhatsApp={() => handleOpenWhatsAppRecipient()}
             onExecutePdfPrint={handleExecutePdfPrint}
             onOpenBackupUpdate={() => setIsBackupUpdateOpen(true)}
-            onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
+            onOpenMobileMenu={() => {
+              if (window.innerWidth < 1024) {
+                setIsMobileSidebarOpen(true);
+              } else {
+                setIsSidebarCollapsed((prev) => !prev);
+              }
+            }}
             canAddItem={userRole === 'admin' || userRole === 'superadmin'}
+            activeTab={primaryTab}
+            onSelectTab={setPrimaryTab}
+            unreadNotificationsCount={unreadNotificationsCount}
           />
 
-          {/* Real-time KPI Dashboard Cards */}
-          <DashboardKpi
-            totalItems={metrics.totalItems}
-            demandedItemsCount={metrics.demandedCount}
-            totalUnits={metrics.totalUnits}
-            totalBudget={metrics.totalBudget}
-            language={language}
-          />
+          {/* 1. HOME TAB: Wholesale Demand Dashboard */}
+          {primaryTab === 'home' && (
+            <>
+              {/* Real-time KPI Dashboard Cards */}
+              <DashboardKpi
+                totalItems={metrics.totalItems}
+                demandedItemsCount={metrics.demandedCount}
+                totalUnits={metrics.totalUnits}
+                totalBudget={metrics.totalBudget}
+                language={language}
+              />
 
-          {/* "Open the List / فہرست کھولیں" Toggle Section Below Dashboard */}
-          <div className="flex flex-col items-center justify-center pt-1 pb-2 no-print">
-            <button
-              id="toggleItemsListBtn"
-              type="button"
-              onClick={() => setIsListVisible((prev) => !prev)}
-              className={`group inline-flex items-center gap-3 px-6 sm:px-8 py-3.5 rounded-2xl font-extrabold text-xs sm:text-sm cursor-pointer transition-all duration-200 shadow-md active:scale-95 ${
-                isListVisible
-                  ? 'neu-raised-flat text-[var(--accent-blue)] hover:neu-inset-sunken'
-                  : 'neu-btn-accent text-white hover:scale-[1.02]'
-              }`}
-              title={isListVisible ? (language === 'ur' ? 'فہرست چھپائیں' : 'Hide the complete items list') : (language === 'ur' ? 'مکمل فہرست کھولیں' : 'Open the complete items list')}
-            >
-              <div className={`p-1 rounded-xl transition-transform duration-300 ${
-                isListVisible ? 'rotate-180 text-[var(--accent-blue)] neu-inset-small' : 'bg-white/20 text-white'
-              }`}>
-                <ChevronDown className="w-4 h-4" />
+              {/* "Open the List / فہرست کھولیں" Toggle Section Below Dashboard */}
+              <div className="flex flex-col items-center justify-center pt-1 pb-2 no-print">
+                <button
+                  id="toggleItemsListBtn"
+                  type="button"
+                  onClick={() => setIsListVisible((prev) => !prev)}
+                  className={`group inline-flex items-center gap-3 px-6 sm:px-8 py-3.5 rounded-2xl font-extrabold text-xs sm:text-sm cursor-pointer transition-all duration-200 shadow-md active:scale-95 ${
+                    isListVisible
+                      ? 'neu-raised-flat text-[var(--accent-blue)] hover:neu-inset-sunken'
+                      : 'neu-btn-accent text-white hover:scale-[1.02]'
+                  }`}
+                  title={isListVisible ? (language === 'ur' ? 'فہرست چھپائیں' : 'Hide the complete items list') : (language === 'ur' ? 'مکمل فہرست کھولیں' : 'Open the complete items list')}
+                >
+                  <div className={`p-1 rounded-xl transition-transform duration-300 ${
+                    isListVisible ? 'rotate-180 text-[var(--accent-blue)] neu-inset-small' : 'bg-white/20 text-white'
+                  }`}>
+                    <ChevronDown className="w-4 h-4" />
+                  </div>
+
+                  <span className="tracking-wide">
+                    {isListVisible
+                      ? (language === 'ur' ? 'فہرست بند کریں / Hide List' : 'Hide the List / فہرست بند کریں')
+                      : (language === 'ur' ? 'فہرست کھولیں / Open the List' : 'Open the List / فہرست کھولیں')}
+                  </span>
+
+                  <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-mono font-bold ${
+                    isListVisible ? 'neu-inset-sm text-[var(--accent-blue)]' : 'bg-white/25 text-white'
+                  }`}>
+                    {filteredAndSortedItems.length} {language === 'ur' ? 'آئٹمز' : 'Items'}
+                  </span>
+                </button>
               </div>
 
-              <span className="tracking-wide">
-                {isListVisible
-                  ? (language === 'ur' ? 'فہرست بند کریں / Hide List' : 'Hide the List / فہرست بند کریں')
-                  : (language === 'ur' ? 'فہرست کھولیں / Open the List' : 'Open the List / فہرست کھولیں')}
-              </span>
+              {/* Collapsible Complete Items List (Filter bar, Table and Mobile Cards) */}
+              <div className={isListVisible ? 'space-y-4 sm:space-y-6 animate-in fade-in duration-200' : 'hidden print:block print:space-y-4'}>
+                {/* Filtering, Sorting & Search Bar */}
+                <FilterSortBar
+                  filter={filter}
+                  onSelectFilter={setFilter}
+                  sortKey={sortKey}
+                  sortDirection={sortDirection}
+                  onSelectSort={(k, d) => {
+                    setSortKey(k);
+                    setSortDirection(d);
+                  }}
+                  onReset={handleResetFiltersAndSort}
+                  searchQuery={searchQuery}
+                  onSearchChange={setSearchQuery}
+                  language={language}
+                  counts={metrics.counts}
+                />
 
-              <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-mono font-bold ${
-                isListVisible ? 'neu-inset-sm text-[var(--accent-blue)]' : 'bg-white/25 text-white'
-              }`}>
-                {filteredAndSortedItems.length} {language === 'ur' ? 'آئٹمز' : 'Items'}
-              </span>
-            </button>
-
-            {!isListVisible && (
-              <p className="text-[11px] text-[var(--text-secondary)] mt-2 font-medium text-center">
-                {language === 'ur'
-                  ? '✨ ڈیش بورڈ پرسکون و خالی موڈ میں ہے۔ مکمل اشیاء کی فہرست دیکھنے و اندراج کیلئے بٹن دبائیں۔'
-                  : '✨ Dashboard is in clean, minimal mode. Click above to expand and view the complete items list.'}
-              </p>
-            )}
-          </div>
-
-          {/* Collapsible Complete Items List (Filter bar, Table and Mobile Cards) */}
-          <div className={isListVisible ? 'space-y-4 sm:space-y-6 animate-in fade-in duration-200' : 'hidden print:block print:space-y-4'}>
-            {/* Filtering, Sorting & Search Bar */}
-            <FilterSortBar
-              filter={filter}
-              onSelectFilter={setFilter}
-              sortKey={sortKey}
-              sortDirection={sortDirection}
-              onSelectSort={(k, d) => {
-                setSortKey(k);
-                setSortDirection(d);
-              }}
-              onReset={handleResetFiltersAndSort}
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              language={language}
-              counts={metrics.counts}
-            />
-
-            {/* Official Printable Header with OrderLa Logo (renders only when printing/saving to PDF) */}
-            <div className="only-print pb-4 mb-4 border-b border-gray-300">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <OrderLaLogo variant="badge" size="lg" />
-                  <div>
-                    <h1 className="text-xl font-black text-black">OrderLa Wholesale Business OS</h1>
-                    <p className="text-xs text-gray-700">
-                      {language === 'ur' ? 'ماسٹر ڈیمانڈ و خریداری ریٹ لسٹ' : 'Master Wholesale Procurement & Demand Sheet'}
-                    </p>
+                {/* Official Printable Header with OrderLa Logo (renders only when printing/saving to PDF) */}
+                <div className="only-print pb-4 mb-4 border-b border-gray-300">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <OrderLaLogo variant="badge" size="lg" />
+                      <div>
+                        <h1 className="text-xl font-black text-black">OrderLa Wholesale Business OS</h1>
+                        <p className="text-xs text-gray-700">
+                          {language === 'ur' ? 'ماسٹر ڈیمانڈ و خریداری ریٹ لسٹ' : 'Master Wholesale Procurement & Demand Sheet'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right text-xs text-gray-700 space-y-0.5">
+                      <div><strong>{language === 'ur' ? 'تاریخ:' : 'Date:'}</strong> {new Date().toLocaleDateString('en-PK')}</div>
+                      <div><strong>{language === 'ur' ? 'کل اشیاء:' : 'Total Items:'}</strong> {items.length}</div>
+                    </div>
                   </div>
                 </div>
-                <div className="text-right text-xs text-gray-700 space-y-0.5">
-                  <div><strong>{language === 'ur' ? 'تاریخ:' : 'Date:'}</strong> {new Date().toLocaleDateString('en-PK')}</div>
-                  <div><strong>{language === 'ur' ? 'کل اشیاء:' : 'Total Items:'}</strong> {items.length}</div>
-                </div>
+
+                {/* 1. Desktop & Tablet View: Structured Neumorphic Table */}
+                <DesktopTableView
+                  items={filteredAndSortedItems}
+                  sortKey={sortKey}
+                  sortDirection={sortDirection}
+                  onSortToggle={handleSortToggle}
+                  onUpdateCell={handleUpdateCell}
+                  onDeleteItem={handleDeleteItem}
+                  totalUnits={metrics.totalUnits}
+                  totalBudget={metrics.totalBudget}
+                  demandedCount={metrics.demandedCount}
+                  language={language}
+                  canEditRates={userRole === 'admin' || userRole === 'superadmin'}
+                />
+
+                {/* 2. Mobile Responsive View: Accordion Cards */}
+                <MobileCardView
+                  items={filteredAndSortedItems}
+                  onUpdateCell={handleUpdateCell}
+                  onDeleteItem={handleDeleteItem}
+                  totalUnits={metrics.totalUnits}
+                  totalBudget={metrics.totalBudget}
+                  language={language}
+                  canEditRates={userRole === 'admin' || userRole === 'superadmin'}
+                />
               </div>
-            </div>
+            </>
+          )}
 
-            {/* 1. Desktop & Tablet View: Structured Neumorphic Table */}
-            <DesktopTableView
-              items={filteredAndSortedItems}
-              sortKey={sortKey}
-              sortDirection={sortDirection}
-              onSortToggle={handleSortToggle}
-              onUpdateCell={handleUpdateCell}
-              onDeleteItem={handleDeleteItem}
-              totalUnits={metrics.totalUnits}
-              totalBudget={metrics.totalBudget}
-              demandedCount={metrics.demandedCount}
+          {/* 2. SAVED ORDERS TAB */}
+          {primaryTab === 'saved-orders' && (
+            <SavedOrdersView
+              currentItems={items}
               language={language}
-              canEditRates={userRole === 'admin' || userRole === 'superadmin'}
+              onLoadOrderToSheet={handleLoadOrderToSheet}
+              onRequestWhatsApp={(orderItems) => handleOpenWhatsAppRecipient(orderItems)}
+              onToast={showToast}
+              onNavigateHome={() => setPrimaryTab('home')}
             />
+          )}
 
-            {/* 2. Mobile Responsive View: Accordion Cards */}
-            <MobileCardView
-              items={filteredAndSortedItems}
-              onUpdateCell={handleUpdateCell}
-              onDeleteItem={handleDeleteItem}
-              totalUnits={metrics.totalUnits}
-              totalBudget={metrics.totalBudget}
+          {/* 3. HISTORY TAB */}
+          {primaryTab === 'history' && (
+            <HistoryView
               language={language}
-              canEditRates={userRole === 'admin' || userRole === 'superadmin'}
+              onToast={showToast}
             />
-          </div>
+          )}
+
+          {/* 4. NOTIFICATIONS TAB */}
+          {primaryTab === 'notifications' && (
+            <NotificationsView
+              notifications={liveNotifications}
+              language={language}
+              onNavigateTab={(tab) => setPrimaryTab(tab)}
+              onToast={showToast}
+              onRefreshNotifications={() => setNotificationsTick((t) => t + 1)}
+            />
+          )}
+
+          {/* 5. PROFILE TAB */}
+          {primaryTab === 'profile' && currentUser && (
+            <ProfileView
+              currentUser={currentUser}
+              userRole={userRole}
+              language={language}
+              theme={theme}
+              onToggleTheme={setTheme}
+              onToggleLanguage={setLanguage}
+              onRequestRoleSwitch={handleRequestRoleSwitch}
+              onOpenSuperAdminConsole={() => setIsSuperAdminConsoleOpen(true)}
+              onOpenApprovals={() => setIsPendingApprovalsOpen(true)}
+              pendingApprovalsCount={pendingApprovalsCount}
+              onLogout={handleLogout}
+              onToast={showToast}
+            />
+          )}
         </div>
       </div>
 
@@ -934,6 +1052,14 @@ export function App() {
           showToast(language === 'ur' ? 'نیا ڈیٹا کامیابی سے ضم (Merge) کر دیا گیا ہے!' : 'New items merged successfully!');
         }}
         onToast={showToast}
+      />
+
+      {/* Mobile Bottom Navigation Bar: full width, 5 options, center home, subtle curve under active tab */}
+      <MobileBottomNav
+        activeTab={primaryTab}
+        onSelectTab={(tab) => setPrimaryTab(tab)}
+        language={language}
+        unreadCount={unreadNotificationsCount}
       />
 
       {/* Toast Notification Container */}
