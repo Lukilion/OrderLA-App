@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { OrderLaLogo } from './OrderLaLogo';
-import { Zap, Move } from 'lucide-react';
+import { Zap } from 'lucide-react';
 import { Language } from '../types';
 
 interface FloatingSwiperButtonProps {
@@ -148,49 +148,30 @@ export const FloatingSwiperButton: React.FC<FloatingSwiperButtonProps> = ({
         touchAction: 'none'
       }}
       className={`fixed top-0 left-0 z-40 select-none transition-shadow duration-150 ${
-        isDragging ? 'cursor-grabbing scale-105' : 'cursor-grab hover:scale-105 active:scale-95'
+        isDragging ? 'cursor-grabbing scale-105' : 'cursor-grab'
       }`}
       title={
         isUrdu
           ? '⚡ ریپڈ ڈیمانڈ سوائپر (دبا کر رکھیں اور کہیں بھی منتقل کریں)'
           : '⚡ Rapid Demand Swiper (Press & hold to drag anywhere)'
-      }
+          }
     >
       {/* Outer Pulse Indicator when idle */}
       <div className="relative group">
         {!isDragging && (
-          <span className="absolute -inset-1 rounded-full bg-amber-500/20 animate-ping opacity-75 pointer-events-none" />
+          <span className="absolute -inset-1 rounded-full bg-[var(--accent-blue)]/25 animate-ping opacity-75 pointer-events-none" />
         )}
 
-        {/* Circular Tactile Soft UI Button */}
-        <div className="w-16 h-16 rounded-full neu-raised flex flex-col items-center justify-center bg-[var(--bg-canvas)] border-2 border-[var(--accent-blue)]/40 relative shadow-xl">
-          {/* Logo Badge */}
-          <div className="w-10 h-10 rounded-full neu-inset-sm flex items-center justify-center">
-            <OrderLaLogo variant="icon" size="sm" />
-          </div>
-
-          {/* Tiny Drag Handle Cue */}
-          <div className="absolute -top-1 right-2 bg-amber-500 text-black text-[9px] font-black px-1.5 py-0.2 rounded-full shadow-xs">
-            ⚡
-          </div>
-
-          {/* Label Badge underneath */}
-          <div className="absolute -bottom-2.5 px-2 py-0.5 rounded-full bg-[var(--bg-canvas)] neu-raised text-[10px] font-black text-amber-600 dark:text-amber-400 whitespace-nowrap border border-amber-500/30">
-            {isUrdu ? 'سوائپر' : 'Swiper'}
-          </div>
+        {/* Electric Icon on top right point of circle */}
+        <div className="absolute -top-1 -right-0.5 sm:-top-1 sm:-right-0.5 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center shadow-md border-2 border-[var(--bg-canvas)] z-10 pointer-events-none">
+          <Zap className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-slate-950 text-slate-950" />
         </div>
 
-        {/* Floating Tooltip hint on hover */}
-        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center pointer-events-none whitespace-nowrap z-50 animate-in fade-in zoom-in-95 duration-100">
-          <div className="px-2.5 py-1 rounded-xl bg-slate-900/90 text-white text-[11px] font-bold shadow-lg flex items-center gap-1.5">
-            <Move className="w-3 h-3 text-amber-400" />
-            <span>
-              {isUrdu
-                ? 'کلک کریں یا پکڑ کر کہیں بھی رکھیں'
-                : 'Click or drag anywhere on screen'}
-            </span>
+        {/* Circular Tactile Soft UI Button with Blue Circle Brand Logo */}
+        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full neu-raised flex items-center justify-center bg-[var(--bg-canvas)] border-2 border-[var(--accent-blue)]/40 relative shadow-xl hover:border-[var(--accent-blue)] transition-colors">
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full neu-inset-sm flex items-center justify-center overflow-hidden bg-[var(--accent-blue)]/5">
+            <OrderLaLogo variant="circle" size="sm" />
           </div>
-          <div className="w-2 h-2 bg-slate-900/90 rotate-45 -mt-1" />
         </div>
       </div>
     </div>

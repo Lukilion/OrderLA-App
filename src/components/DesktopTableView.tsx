@@ -13,6 +13,7 @@ interface DesktopTableViewProps {
   totalBudget: number;
   demandedCount: number;
   language: Language;
+  canEditRates?: boolean;
 }
 
 export const DesktopTableView: React.FC<DesktopTableViewProps> = ({
@@ -25,7 +26,8 @@ export const DesktopTableView: React.FC<DesktopTableViewProps> = ({
   totalUnits,
   totalBudget,
   demandedCount,
-  language
+  language,
+  canEditRates = true
 }) => {
   const isUrdu = language === 'ur';
 
@@ -201,7 +203,7 @@ export const DesktopTableView: React.FC<DesktopTableViewProps> = ({
                       </select>
                     </td>
 
-                    {/* 2. بنیادی ریٹ (Editable Field) */}
+                    {/* 2. بنیادی ریٹ (Editable Field for Admin / Super Admin) */}
                     <td className="col-rate py-2 px-2 text-center">
                       <input
                         type="number"
@@ -209,6 +211,15 @@ export const DesktopTableView: React.FC<DesktopTableViewProps> = ({
                         min="0"
                         value={item.rate === 0 ? '' : item.rate}
                         placeholder="0"
+                        disabled={!canEditRates}
+                        readOnly={!canEditRates}
+                        title={
+                          !canEditRates
+                            ? isUrdu
+                              ? 'ریٹ تبدیل کرنے کی اجازت صرف ایڈمن یا سپر ایڈمن کو ہے'
+                              : 'Rates can only be edited by Admin or Super Admin'
+                            : undefined
+                        }
                         onChange={(e) =>
                           onUpdateCell(
                             item.id,
@@ -216,7 +227,11 @@ export const DesktopTableView: React.FC<DesktopTableViewProps> = ({
                             e.target.value === '' ? 0 : parseFloat(e.target.value) || 0
                           )
                         }
-                        className="w-20 text-center font-mono font-bold bg-transparent hover:neu-inset focus:neu-inset px-1.5 py-1 rounded-xl transition text-xs text-[var(--text-main)]"
+                        className={`w-20 text-center font-mono font-bold px-1.5 py-1 rounded-xl transition text-xs ${
+                          !canEditRates
+                            ? 'cursor-not-allowed opacity-75 bg-black/5 dark:bg-white/5 text-[var(--text-secondary)] select-none'
+                            : 'bg-transparent hover:neu-inset focus:neu-inset text-[var(--text-main)]'
+                        }`}
                       />
                     </td>
 

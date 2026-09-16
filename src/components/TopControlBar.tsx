@@ -15,7 +15,6 @@ import {
   MessageSquare,
   Sun,
   Moon,
-  Flame,
   Eraser,
   Sparkles,
   RefreshCw,
@@ -36,12 +35,13 @@ interface TopControlBarProps {
   onSaveManual: () => void;
   onPromptRevoke: () => void;
   onResetToZeroPlaceholders: () => void;
-  onOpenSwiper: () => void;
+  onOpenSwiper?: () => void;
   onExportExcel: () => void;
   onCopyWhatsApp: () => void;
   onExecutePdfPrint: (options: { showDashboard: boolean; visibleCols: Record<string, boolean> }) => void;
   onOpenBackupUpdate?: () => void;
   onOpenMobileMenu?: () => void;
+  canAddItem?: boolean;
 }
 
 export const TopControlBar: React.FC<TopControlBarProps> = ({
@@ -62,7 +62,8 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
   onCopyWhatsApp,
   onExecutePdfPrint,
   onOpenBackupUpdate,
-  onOpenMobileMenu
+  onOpenMobileMenu,
+  canAddItem = true
 }) => {
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const [isEditSubOpen, setIsEditSubOpen] = useState(false);
@@ -179,31 +180,8 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
 
       {/* Main Bar Contents */}
       <div className="flex flex-col gap-4">
-        {/* Title & Swiper Quick Launch Section */}
-        <div className="space-y-2.5">
-          {/* Quick Launch Ribbon: Open Swiper button located on left side under theme buttons */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* Open Swiper Button */}
-            <button
-              onClick={onOpenSwiper}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-2xl neu-btn-accent text-xs font-black select-none cursor-pointer shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all group"
-              title={isUrdu ? 'تیز رفتار ڈیمانڈ سوائپر موڈ (سوائپ دائیں = چھوڑیں | سوائپ بائیں = مطلوب)' : 'Rapid Demand Swiper (Swipe Right = Skip | Swipe Left = Demand)'}
-            >
-              <Flame className="w-4 h-4 text-amber-300 animate-pulse" />
-              <span>{isUrdu ? '⚡ سوائپر موڈ کھولیں' : '⚡ Open Swiper'}</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/20 text-white font-mono font-bold">
-                {isUrdu ? 'سوائپ دائیں / بائیں' : 'Swipe'}
-              </span>
-            </button>
-
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full neu-inset-sm text-xs font-semibold text-[var(--accent-blue)]">
-              <span className="w-2 h-2 rounded-full bg-[var(--accent-blue)] animate-pulse"></span>
-              <span>
-                {isUrdu ? 'مانیٹرنگ، آڈٹ و ریٹ مینیجمنٹ' : 'Realtime Wholesale Audit & Demand'}
-              </span>
-            </div>
-          </div>
-
+        {/* Title Section */}
+        <div className="space-y-2">
           <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-[var(--text-main)] urdu-title leading-relaxed">
             {isUrdu ? 'ڈیمانڈ شیٹ (Demand Sheet)' : 'Wholesale Demand Sheet'}
           </h1>
@@ -251,28 +229,52 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
                   </span>
                 </div>
 
-                {/* 1. نیا آئٹم */}
+                {/* 1. نیا آئٹم (Restricted to Admin / Superadmin) */}
                 <button
+                  disabled={!canAddItem}
+                  title={
+                    !canAddItem
+                      ? isUrdu
+                        ? 'نیا آئٹم شامل کرنے کا اختیار صرف ایڈمن یا سپر ایڈمن کو ہے'
+                        : 'Only Admin or Super Admin can add new items'
+                      : undefined
+                  }
                   onClick={() => {
-                    onOpenAddItem();
-                    setIsActionsOpen(false);
+                    if (canAddItem) {
+                      onOpenAddItem();
+                      setIsActionsOpen(false);
+                    }
                   }}
-                  className="w-full text-right rtl:text-right px-3.5 py-2.5 rounded-2xl neu-btn text-[var(--text-main)] hover:text-emerald-500 flex items-center justify-between cursor-pointer group transition-all"
+                  className={`w-full text-right rtl:text-right px-3.5 py-2.5 rounded-2xl neu-btn flex items-center justify-between transition-all ${
+                    !canAddItem
+                      ? 'opacity-40 cursor-not-allowed text-[var(--text-secondary)]'
+                      : 'cursor-pointer text-[var(--text-main)] hover:text-emerald-500 group'
+                  }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-xl neu-inset-sm flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform">
+                    <div className={`w-7 h-7 rounded-xl neu-inset-sm flex items-center justify-center ${
+                      !canAddItem ? 'text-[var(--text-secondary)]' : 'text-emerald-500 group-hover:scale-110 transition-transform'
+                    }`}>
                       <Plus className="w-4 h-4" />
                     </div>
                     <div className="flex flex-col text-left rtl:text-right">
-                      <span className="font-extrabold text-xs text-[var(--text-main)] group-hover:text-emerald-500">
+                      <span className={`font-extrabold text-xs ${
+                        !canAddItem ? 'text-[var(--text-secondary)]' : 'text-[var(--text-main)] group-hover:text-emerald-500'
+                      }`}>
                         {isUrdu ? '1. نیا آئٹم' : '1. New Item (نیا آئٹم)'}
                       </span>
                       <span className="text-[10px] text-[var(--text-secondary)]">
-                        {isUrdu ? 'نئی پروڈکٹ کیٹلاگ میں شامل کریں' : 'Add new wholesale item to catalog'}
+                        {!canAddItem
+                          ? (isUrdu ? 'صرف ایڈمن کیلئے مجاز' : 'Restricted to Admin only')
+                          : (isUrdu ? 'نئی پروڈکٹ کیٹلاگ میں شامل کریں' : 'Add new wholesale item to catalog')}
                       </span>
                     </div>
                   </div>
-                  <span className="text-[10px] neu-inset-sm px-2 py-0.5 rounded-md text-emerald-500 font-bold">+ Add</span>
+                  <span className={`text-[10px] neu-inset-sm px-2 py-0.5 rounded-md font-bold ${
+                    !canAddItem ? 'text-[var(--text-secondary)]' : 'text-emerald-500'
+                  }`}>
+                    {!canAddItem ? 'Locked' : '+ Add'}
+                  </span>
                 </button>
 
                 {/* 2. ترمیم */}
@@ -364,7 +366,7 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
                           <Trash2 className="w-3.5 h-3.5 text-rose-500" />
                           <span>{isUrdu ? 'اصل لسٹ پر بحال کریں (Revoke)' : 'Revoke to Default'}</span>
                         </span>
-                        <span className="text-[10px] text-rose-500">87 items</span>
+                        <span className="text-[10px] text-rose-500">94 items</span>
                       </button>
                     </div>
                   )}

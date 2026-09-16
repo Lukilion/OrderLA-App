@@ -9,6 +9,7 @@ interface MobileCardViewProps {
   totalUnits: number;
   totalBudget: number;
   language: Language;
+  canEditRates?: boolean;
 }
 
 export const MobileCardView: React.FC<MobileCardViewProps> = ({
@@ -17,7 +18,8 @@ export const MobileCardView: React.FC<MobileCardViewProps> = ({
   onDeleteItem,
   totalUnits,
   totalBudget,
-  language
+  language,
+  canEditRates = true
 }) => {
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
 
@@ -144,7 +146,7 @@ export const MobileCardView: React.FC<MobileCardViewProps> = ({
                     </div>
 
                     <div className="grid grid-cols-3 gap-2">
-                      {/* 2. بنیادی ریٹ (Editable) */}
+                      {/* 2. بنیادی ریٹ (Editable by Admin / Super Admin) */}
                       <div>
                         <label className="block text-[10px] text-[var(--text-secondary)] font-bold mb-1">
                           {isUrdu ? 'بنیادی ریٹ' : 'Rate'}
@@ -155,6 +157,15 @@ export const MobileCardView: React.FC<MobileCardViewProps> = ({
                           min="0"
                           value={item.rate === 0 ? '' : item.rate}
                           placeholder="0"
+                          disabled={!canEditRates}
+                          readOnly={!canEditRates}
+                          title={
+                            !canEditRates
+                              ? isUrdu
+                                ? 'ریٹ تبدیل کرنے کی اجازت صرف ایڈمن یا سپر ایڈمن کو ہے'
+                                : 'Rates can only be edited by Admin or Super Admin'
+                              : undefined
+                          }
                           onChange={(e) =>
                             onUpdateCell(
                               item.id,
@@ -162,7 +173,11 @@ export const MobileCardView: React.FC<MobileCardViewProps> = ({
                               e.target.value === '' ? 0 : parseFloat(e.target.value) || 0
                             )
                           }
-                          className="w-full px-2 py-1.5 rounded-xl neu-input font-mono font-bold text-center"
+                          className={`w-full px-2 py-1.5 rounded-xl font-mono font-bold text-center ${
+                            !canEditRates
+                              ? 'cursor-not-allowed opacity-75 bg-black/5 dark:bg-white/5 text-[var(--text-secondary)] select-none'
+                              : 'neu-input'
+                          }`}
                         />
                       </div>
 

@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type LogoVariant = 'badge' | 'icon' | 'horizontal' | 'symbol';
+export type LogoVariant = 'badge' | 'icon' | 'circle' | 'horizontal' | 'symbol';
 export type LogoSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
 interface OrderLaLogoProps {
@@ -30,7 +30,7 @@ export const OrderLaLogo: React.FC<OrderLaLogoProps> = ({
   const { px, textClass, subTextClass } = sizeMap[size];
 
   // The Exact OrderLa Icon SVG reproducing the uploaded design
-  const renderSvgIcon = (withTextInside: boolean) => (
+  const renderSvgIcon = (withTextInside: boolean, isCircleBadge: boolean = false) => (
     <svg
       viewBox="0 0 200 200"
       width={px}
@@ -60,13 +60,13 @@ export const OrderLaLogo: React.FC<OrderLaLogoProps> = ({
         </filter>
       </defs>
 
-      {/* 1. Rounded Square Background Badge */}
+      {/* 1. Rounded Square or Circle Background Badge */}
       <rect
         x="2"
         y="2"
         width="196"
         height="196"
-        rx="46"
+        rx={isCircleBadge ? 98 : 46}
         fill="url(#orderlaBlueGrad)"
       />
       {/* Specular Top Shimmer */}
@@ -75,7 +75,7 @@ export const OrderLaLogo: React.FC<OrderLaLogoProps> = ({
         y="3"
         width="194"
         height="100"
-        rx="45"
+        rx={isCircleBadge ? 97 : 45}
         fill="url(#orderlaHighlight)"
       />
 
@@ -165,7 +165,16 @@ export const OrderLaLogo: React.FC<OrderLaLogoProps> = ({
   if (variant === 'icon') {
     return (
       <div className={`inline-flex items-center justify-center ${className}`}>
-        {renderSvgIcon(false)}
+        {renderSvgIcon(false, false)}
+      </div>
+    );
+  }
+
+  // Variant 2b: Circular Brand Icon Only (Circle truck icon badge without text inside)
+  if (variant === 'circle') {
+    return (
+      <div className={`inline-flex items-center justify-center rounded-full overflow-hidden ${className}`}>
+        {renderSvgIcon(false, true)}
       </div>
     );
   }

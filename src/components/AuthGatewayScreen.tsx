@@ -241,10 +241,12 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
     }
 
     // Set registration success data for review and notification
+    setPendingWaitUser(regResult.user);
     setRegSuccessData({
       user: regResult.user,
       mailtoUrl: regResult.mailtoUrl
     });
+    setWaitStatusMsg(null);
   };
 
   return (
@@ -382,6 +384,18 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
               )}
 
               <div className="space-y-2.5 max-w-md mx-auto pt-2">
+                {regSuccessData?.mailtoUrl && (
+                  <a
+                    href={regSuccessData.mailtoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-3 px-4 rounded-2xl neu-btn-accent text-white text-xs font-black flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                  >
+                    <Mail className="w-4 h-4" />
+                    <span>{isUrdu ? 'ایڈمنسٹریٹر کو ای میل کے ذریعے مطلع کریں' : 'Notify Administrator via Email'}</span>
+                  </a>
+                )}
+
                 <button
                   type="button"
                   onClick={handleCheckApprovalStatus}
@@ -395,12 +409,17 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
                 <button
                   type="button"
                   onClick={() => {
+                    const savedUsername = pendingWaitUser.username;
                     setPendingWaitUser(null);
                     setWaitStatusMsg(null);
+                    setRegSuccessData(null);
+                    setAuthMode('login');
+                    setUsername(savedUsername);
                   }}
-                  className="text-xs text-[var(--text-secondary)] font-bold hover:text-[var(--accent-blue)] cursor-pointer"
+                  className="w-full py-2 text-xs text-[var(--text-secondary)] font-bold hover:text-[var(--accent-blue)] cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  {isUrdu ? 'لاگ ان اسکرین پر واپس جائیں' : 'Back to Login Screen'}
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>{isUrdu ? 'لاگ ان اسکرین پر واپس جائیں' : 'Back to Login Screen'}</span>
                 </button>
               </div>
             </div>
@@ -792,99 +811,6 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
                     {isUrdu ? 'یہاں لاگ ان کریں' : 'Sign in here'}
                   </button>
                 </p>
-              </div>
-            </div>
-          )}
-
-          {/* ========================================================================= */}
-          {/* WAITING FOR APPROVAL VIEW (ہولڈ کریں - ایڈمن منظوری کا انتظار) */}
-          {/* ========================================================================= */}
-          {pendingWaitUser && (
-            <div className="space-y-5 animate-in zoom-in-95 duration-200 text-center py-2">
-              <div className="relative w-20 h-20 rounded-full neu-inset mx-auto flex items-center justify-center text-amber-500">
-                <Hourglass className="w-10 h-10 animate-pulse text-amber-500" />
-                <span className="absolute -bottom-1 -right-1 p-1 bg-amber-500 text-white rounded-full">
-                  <Clock className="w-4 h-4" />
-                </span>
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-black">
-                  <span>⏳ {isUrdu ? 'انتظار فرمائیں: ایڈمن کی منظوری درکار ہے' : 'Please Wait: Administrator Approval Required'}</span>
-                </div>
-                <h3 className="text-lg sm:text-xl font-black text-[var(--text-main)] urdu-title">
-                  {isUrdu ? 'براہِ کرم ہولڈ کریں، رسائی منظور ہونے تک انتظار فرمائیں' : 'Hold On: Account Awaiting Approval'}
-                </h3>
-                <p className="text-xs sm:text-sm text-[var(--text-secondary)] max-w-md mx-auto leading-relaxed">
-                  {isUrdu
-                    ? `محترم ${pendingWaitUser.name}، آپ کی رجسٹریشن جمع ہو چکی ہے۔ سسٹم کا مکمل کنٹرول ایڈمنسٹریٹر اور سپر ایڈمن کے پاس ہے۔ براہِ کرم ہولڈ اور انتظار کریں جب تک آپ کی رسائی منظور نہ ہو جائے۔`
-                    : `Hello ${pendingWaitUser.name}, your account registration has been submitted. Full access decisions are strictly reserved for administrators and super admins. Please hold and wait until your access is approved and granted.`}
-                </p>
-              </div>
-
-              {/* Applicant Summary Card */}
-              <div className="p-4 rounded-2xl neu-inset-sm text-xs space-y-2 max-w-md mx-auto text-left">
-                <div className="flex justify-between border-b border-black/5 dark:border-white/5 pb-1.5">
-                  <span className="font-bold text-[var(--text-secondary)]">{isUrdu ? 'صارف کا نام:' : 'Username:'}</span>
-                  <span className="font-mono font-bold text-[var(--accent-blue)]">@{pendingWaitUser.username}</span>
-                </div>
-                <div className="flex justify-between border-b border-black/5 dark:border-white/5 pb-1.5">
-                  <span className="font-bold text-[var(--text-secondary)]">{isUrdu ? 'پورا نام:' : 'Applicant Name:'}</span>
-                  <span className="font-bold text-[var(--text-main)]">{pendingWaitUser.name}</span>
-                </div>
-                <div className="flex justify-between border-b border-black/5 dark:border-white/5 pb-1.5">
-                  <span className="font-bold text-[var(--text-secondary)]">{isUrdu ? 'مطلوبہ رسائی لیول:' : 'Requested Tier:'}</span>
-                  <span className="font-bold text-amber-500">
-                    {pendingWaitUser.requestedRole === 'admin'
-                      ? (isUrdu ? 'لیول 3: ایڈمن (Admin)' : 'Tier 3: Admin')
-                      : pendingWaitUser.requestedRole === 'auditor'
-                      ? (isUrdu ? 'لیول 2: آڈیٹر (Auditor)' : 'Tier 2: Auditor')
-                      : (isUrdu ? 'لیول 1: خریدار (Buyer)' : 'Tier 1: Wholesale Buyer')}
-                  </span>
-                </div>
-                <div className="flex justify-between pt-0.5">
-                  <span className="font-bold text-[var(--text-secondary)]">{isUrdu ? 'موجودہ کیفیت:' : 'Current Status:'}</span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-600 dark:text-amber-400">
-                    {isUrdu ? 'زیرِ جائزہ (Pending)' : 'Pending Review'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Live Status Message Banner */}
-              {waitStatusMsg && (
-                <div className="p-3 rounded-2xl neu-inset-sm text-xs font-bold text-center animate-in fade-in max-w-md mx-auto text-[var(--text-main)]">
-                  <span>{waitStatusMsg}</span>
-                </div>
-              )}
-
-              {/* Action Buttons: Live Check & Return to Login */}
-              <div className="space-y-2.5 max-w-md mx-auto pt-2">
-                <button
-                  type="button"
-                  onClick={handleCheckApprovalStatus}
-                  disabled={isCheckingStatus}
-                  className="w-full py-3.5 px-5 rounded-2xl neu-btn text-xs sm:text-sm font-black text-[var(--accent-blue)] flex items-center justify-center gap-2 cursor-pointer shadow-md hover:scale-[1.01] transition disabled:opacity-60"
-                >
-                  <RefreshCw className={`w-4 h-4 ${isCheckingStatus ? 'animate-spin' : ''}`} />
-                  <span>
-                    {isCheckingStatus
-                      ? (isUrdu ? 'تصدیقی صورتحال چیک کی جا رہی ہے...' : 'Checking approval status...')
-                      : (isUrdu ? 'منظوری کی صورتحال دوبارہ چیک کریں (Check Approval)' : 'Check Approval Status Now')}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPendingWaitUser(null);
-                    setAuthMode('login');
-                    setUsername(pendingWaitUser.username);
-                  }}
-                  className="w-full py-2.5 text-xs text-[var(--text-secondary)] font-bold hover:text-[var(--accent-blue)] cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>{isUrdu ? 'لاگ ان اسکرین پر واپس جائیں' : 'Back to Login Screen'}</span>
-                </button>
               </div>
             </div>
           )}

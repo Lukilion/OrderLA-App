@@ -83,9 +83,12 @@ export function App() {
   // Master Items State (persisted with clean default empty stock/demand)
   const [items, setItems] = useState<WholesaleItem[]>(() => {
     try {
-      const stored = localStorage.getItem('wholesale_demand_sheet_items_v2');
+      const stored = localStorage.getItem('wholesale_demand_sheet_items_v3');
       if (stored) {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length === DEFAULT_MASTER_ITEMS.length) {
+          return parsed;
+        }
       }
     } catch {
       /* ignore fallback */
@@ -158,7 +161,7 @@ export function App() {
     (newItems: WholesaleItem[], recordHistory: boolean = true) => {
       setItems(newItems);
       try {
-        localStorage.setItem('wholesale_demand_sheet_items_v2', JSON.stringify(newItems));
+        localStorage.setItem('wholesale_demand_sheet_items_v3', JSON.stringify(newItems));
       } catch (err) {
         console.error('LocalStorage save error', err);
       }
@@ -220,6 +223,16 @@ export function App() {
   // Direct cell editing handler
   const handleUpdateCell = useCallback(
     (id: number, field: keyof WholesaleItem, value: any) => {
+      // Restrict wholesale rate editing to Admin or Super Admin only
+      if (field === 'rate' && userRole !== 'admin' && userRole !== 'superadmin') {
+        showToast(
+          language === 'ur'
+            ? '⛔ ریٹ تبدیل کرنے کی اجازت صرف ایڈمن یا سپر ایڈمن کو ہے!'
+            : '⛔ Only Admin or Super Admin can edit wholesale rates!'
+        );
+        return;
+      }
+
       const updated = items.map((item) => {
         if (item.id === id) {
           return { ...item, [field]: value };
@@ -228,11 +241,20 @@ export function App() {
       });
       commitItemsChange(updated);
     },
-    [items, commitItemsChange]
+    [items, commitItemsChange, userRole, showToast, language]
   );
 
   // Add Item handler
   const handleAddItem = (newItemData: Omit<WholesaleItem, 'id'>) => {
+    // Restrict Add Item to Admin or Super Admin only
+    if (userRole !== 'admin' && userRole !== 'superadmin') {
+      showToast(
+        language === 'ur'
+          ? '⛔ نیا آئٹم شامل کرنے کی اجازت صرف ایڈمن یا سپر ایڈمن کو ہے!'
+          : '⛔ Only Admin or Super Admin can add new items!'
+      );
+      return;
+    }
     const nextId = items.length > 0 ? Math.max(...items.map((i) => i.id)) + 1 : 1;
     const newItem: WholesaleItem = {
       id: nextId,
@@ -292,7 +314,7 @@ export function App() {
   // Save manual snapshot
   const handleManualSave = () => {
     try {
-      localStorage.setItem('wholesale_demand_sheet_items_v2', JSON.stringify(items));
+      localStorage.setItem('wholesale_demand_sheet_items_v3', JSON.stringify(items));
       showToast(
         language === 'ur'
           ? 'تمام ریکارڈز محفوظ ہو گئے ہیں (Saved)!'
@@ -676,6 +698,7 @@ export function App() {
             onExecutePdfPrint={handleExecutePdfPrint}
             onOpenBackupUpdate={() => setIsBackupUpdateOpen(true)}
             onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
+            canAddItem={userRole === 'admin' || userRole === 'superadmin'}
           />
 
           {/* Real-time KPI Dashboard Cards */}
@@ -778,6 +801,7 @@ export function App() {
               totalBudget={metrics.totalBudget}
               demandedCount={metrics.demandedCount}
               language={language}
+              canEditRates={userRole === 'admin' || userRole === 'superadmin'}
             />
 
             {/* 2. Mobile Responsive View: Accordion Cards */}
@@ -788,6 +812,7 @@ export function App() {
               totalUnits={metrics.totalUnits}
               totalBudget={metrics.totalBudget}
               language={language}
+              canEditRates={userRole === 'admin' || userRole === 'superadmin'}
             />
           </div>
         </div>
