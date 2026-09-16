@@ -119,44 +119,6 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
     onLoginSuccess(result.user);
   };
 
-  // Direct Quick Login as Demo Role
-  const handleQuickLoginAs = (role: UserRole) => {
-    if (role === 'superadmin') {
-      const res = authenticateUser('Lukilion', 'Lukilion@78612');
-      if (res.success && res.user) {
-        onLoginSuccess(res.user);
-        return;
-      }
-    } else if (role === 'admin') {
-      const res = authenticateUser('admin', 'admin123');
-      if (res.success && res.user) {
-        onLoginSuccess(res.user);
-        return;
-      }
-    } else if (role === 'auditor') {
-      const res = authenticateUser('auditor', 'audit123');
-      if (res.success && res.user) {
-        onLoginSuccess(res.user);
-        return;
-      }
-    } else {
-      const users = getStoredUsers();
-      const buyerUser = users.find((u) => u.role === 'buyer') || {
-        id: 'buyer-default',
-        username: 'buyer',
-        password: '',
-        name: 'Wholesale Buyer (خریدار)',
-        role: 'buyer' as UserRole,
-        canExportExcel: false,
-        canExportPdf: false,
-        canSendWhatsApp: true,
-        createdAt: '2026-09-10'
-      };
-      setCurrentUser(buyerUser);
-      onLoginSuccess(buyerUser);
-    }
-  };
-
   // Live Check Approval Status for Pending Users
   const handleCheckApprovalStatus = () => {
     if (!pendingWaitUser) return;
@@ -542,21 +504,6 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
                   {isUrdu ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
                 </button>
               </form>
-
-              {/* Super Admin Demo Hint & Fast Login */}
-              <div className="pt-2 border-t border-black/5 dark:border-white/5 flex flex-wrap items-center justify-between gap-2 text-xs">
-                <span className="text-[11px] text-[var(--text-secondary)] font-medium">
-                  👑 {isUrdu ? 'سپر ایڈمن ڈیمو:' : 'Super Admin Demo:'}{' '}
-                  <span className="font-mono font-bold text-amber-600 dark:text-amber-400">@Lukilion</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handleQuickLoginAs('superadmin')}
-                  className="px-2.5 py-1 rounded-xl neu-btn text-[11px] font-bold text-amber-600 dark:text-amber-400 cursor-pointer hover:underline"
-                >
-                  {isUrdu ? 'ڈیمو خودکار لاگ ان' : 'Demo Auto-Fill'}
-                </button>
-              </div>
 
               {/* Switch to Register footer */}
               <div className="text-center pt-2">

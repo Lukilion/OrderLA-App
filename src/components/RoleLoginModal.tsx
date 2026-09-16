@@ -51,12 +51,7 @@ export const RoleLoginModal: React.FC<RoleLoginModalProps> = ({
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
 
   // Login State
-  const [username, setUsername] = useState<string>(() => {
-    if (targetRole === 'superadmin') return 'Lukilion';
-    if (targetRole === 'admin') return 'admin';
-    if (targetRole === 'auditor') return 'auditor';
-    return 'buyer';
-  });
+  const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -80,15 +75,7 @@ export const RoleLoginModal: React.FC<RoleLoginModalProps> = ({
   // When targetRole changes or modal opens, reset fields
   React.useEffect(() => {
     if (isOpen) {
-      if (targetRole === 'superadmin') {
-        setUsername('Lukilion');
-      } else if (targetRole === 'admin') {
-        setUsername('admin');
-      } else if (targetRole === 'auditor') {
-        setUsername('auditor');
-      } else {
-        setUsername('buyer');
-      }
+      setUsername('');
       setPassword('');
       setErrorMsg(null);
       setRegSuccessData(null);
@@ -190,8 +177,8 @@ export const RoleLoginModal: React.FC<RoleLoginModalProps> = ({
         return {
           titleUrdu: 'سپر ایڈمن سیکیورٹی لاگ ان',
           titleEn: 'Super Admin Security Login',
-          descUrdu: 'سپر ایڈمن (Lukilion) کے لیے پاس ورڈ درج کریں',
-          descEn: 'Enter password for Super Admin authority (Lukilion)',
+          descUrdu: 'سپر ایڈمن کے لیے پاس ورڈ درج کریں',
+          descEn: 'Enter password for Super Admin authority',
           icon: <Crown className="w-5 h-5 text-amber-500 animate-pulse" />,
         };
       case 'admin':
@@ -424,23 +411,6 @@ export const RoleLoginModal: React.FC<RoleLoginModalProps> = ({
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
-
-                  {/* Password Hints */}
-                  {targetRole === 'superadmin' && (
-                    <p className="text-[10px] text-[var(--accent-blue)] font-semibold pt-0.5">
-                      {isUrdu ? 'سپر ایڈمن:' : 'Super Admin:'} <span className="font-mono font-bold">Lukilion</span> | <span className="font-mono font-bold">Lukilion@78612</span>
-                    </p>
-                  )}
-                  {targetRole === 'admin' && (
-                    <p className="text-[10px] text-[var(--text-secondary)] font-medium pt-0.5">
-                      {isUrdu ? 'ایڈمن پاس ورڈ:' : 'Admin Password:'} <span className="font-mono font-bold">admin123</span>
-                    </p>
-                  )}
-                  {targetRole === 'auditor' && (
-                    <p className="text-[10px] text-[var(--text-secondary)] font-medium pt-0.5">
-                      {isUrdu ? 'آڈیٹر پاس ورڈ:' : 'Auditor Password:'} <span className="font-mono font-bold">audit123</span>
-                    </p>
-                  )}
                 </div>
               )}
 
