@@ -201,7 +201,7 @@ export const NeumorphicSidebar: React.FC<NeumorphicSidebarProps> = ({
             {/* Section Heading */}
             {!isCollapsed ? (
               <div className="px-2 pt-1 pb-1 flex items-center justify-between">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--text-secondary)] opacity-80">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--text-secondary)] opacity-80 urdu-subheading">
                   {isUrdu ? section.titleUrdu : section.titleEnglish}
                 </span>
                 <span className="w-8 h-[2px] rounded-full neu-inset-small opacity-40"></span>
