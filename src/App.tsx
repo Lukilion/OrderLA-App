@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { WholesaleItem, UserRole, Language, Theme, FilterType, SortKey, SortDirection, UserAccount } from './types';
 import { DEFAULT_MASTER_ITEMS, NAV_ROUTES } from './data/masterItems';
 import { OrderLaTopNav } from './components/OrderLaTopNav';
+import { NeumorphicSidebar } from './components/NeumorphicSidebar';
 import { OrderLaLogo } from './components/OrderLaLogo';
 import { TopControlBar } from './components/TopControlBar';
 import { DashboardKpi } from './components/DashboardKpi';
@@ -16,11 +17,13 @@ import { SuperAdminConsoleModal } from './components/SuperAdminConsoleModal';
 import { BackupUpdateModal } from './components/BackupUpdateModal';
 import { WhatsAppRecipientModal } from './components/WhatsAppRecipientModal';
 import { AccessDeniedModal } from './components/AccessDeniedModal';
+import { PendingApprovalsModal } from './components/PendingApprovalsModal';
 import { FloatingSwiperButton } from './components/FloatingSwiperButton';
 import { Toast } from './components/Toast';
 import { AuthGatewayScreen } from './components/AuthGatewayScreen';
 import { exportWholesaleExcel } from './utils/exportHelpers';
-import { getCurrentUser, hasExportPermission, getStoredUsers, setCurrentUser as persistCurrentUser, logoutUser } from './utils/authManager';
+import { getCurrentUser, hasExportPermission, getStoredUsers, setCurrentUser as persistCurrentUser, logoutUser, getPendingCount } from './utils/authManager';
+import { ChevronDown } from 'lucide-react';
 
 export function App() {
   // Visual Theme State (Light / Dark)
@@ -58,6 +61,24 @@ export function App() {
   // Navigation State
   const [activeRoute, setActiveRoute] = useState<string>('demand-sheet');
   const [language, setLanguage] = useState<Language>('ur');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('orderla_sidebar_collapsed');
+      return stored === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
+
+  // Sync sidebar collapsed state
+  useEffect(() => {
+    try {
+      localStorage.setItem('orderla_sidebar_collapsed', String(isSidebarCollapsed));
+    } catch {
+      /* ignore */
+    }
+  }, [isSidebarCollapsed]);
 
   // Master Items State (persisted with clean default empty stock/demand)
   const [items, setItems] = useState<WholesaleItem[]>(() => {
@@ -90,6 +111,9 @@ export function App() {
   const [isSwiperOpen, setIsSwiperOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Visibility of the complete items list (hidden by default to keep dashboard cool & empty)
+  const [isListVisible, setIsListVisible] = useState<boolean>(false);
+
   // Role Authentication & Security Modals
   const [isRoleLoginOpen, setIsRoleLoginOpen] = useState<boolean>(false);
   const [targetRoleForLogin, setTargetRoleForLogin] = useState<UserRole>('admin');
@@ -99,6 +123,21 @@ export function App() {
   const [whatsAppItemsTarget, setWhatsAppItemsTarget] = useState<WholesaleItem[]>(items);
   const [isAccessDeniedOpen, setIsAccessDeniedOpen] = useState<boolean>(false);
   const [deniedPermissionType, setDeniedPermissionType] = useState<'excel' | 'pdf' | 'whatsapp'>('excel');
+  const [isPendingApprovalsOpen, setIsPendingApprovalsOpen] = useState<boolean>(false);
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState<number>(() => getPendingCount());
+
+  // Listen for storage changes across tabs or windows to update pending count
+  useEffect(() => {
+    const handleStorage = () => {
+      setPendingApprovalsCount(getPendingCount());
+    };
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('focus', handleStorage);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('focus', handleStorage);
+    };
+  }, []);
 
   // Synchronize HTML document dir & lang attribute
   useEffect(() => {
@@ -405,6 +444,26 @@ export function App() {
     return NAV_ROUTES.filter((r) => r.roles.includes(userRole));
   }, [userRole]);
 
+  // Unified Route Handler (Supports specialized actions like Swiper modal, Backup modal, Admin console)
+  const handleSelectRoute = useCallback((routeId: string) => {
+    if (routeId === 'demand-swiper') {
+      setIsSwiperOpen(true);
+      return;
+    }
+    if (routeId === 'system-backup') {
+      setIsBackupUpdateOpen(true);
+      return;
+    }
+    if (routeId === 'admin-console') {
+      setIsSuperAdminConsoleOpen(true);
+      return;
+    }
+    if (['priority-orders', 'low-stock', 'shalmi-market', 'kashif-wholesale'].includes(routeId)) {
+      setIsListVisible(true);
+    }
+    setActiveRoute(routeId);
+  }, []);
+
   // Calculate Real-time Counts and KPI Metrics
   const metrics = useMemo(() => {
     let demandedCount = 0;
@@ -565,7 +624,7 @@ export function App() {
   }
 
   return (
-    <div className="w-full min-h-screen bg-[var(--bg-canvas)] text-[var(--text-main)] transition-colors duration-200 py-2 sm:py-6 px-2.5 sm:px-6 lg:px-8 space-y-4 sm:space-y-6 max-w-7xl mx-auto selection:bg-[var(--accent-blue)] selection:text-white relative flex flex-col justify-start">
+    <div className="w-full min-h-screen bg-[var(--bg-canvas)] text-[var(--text-main)] transition-colors duration-200 py-2 sm:py-4 px-2 sm:px-4 lg:px-6 xl:px-8 selection:bg-[var(--accent-blue)] selection:text-white relative">
       
       {/* Movable Floating Circular Swiper Button: positioned in front of Demand sheet, fixed so it remains in exact place on screen even while scrolling */}
       <FloatingSwiperButton
@@ -573,111 +632,165 @@ export function App() {
         language={language}
       />
 
-      {/* Main Container Area */}
-      <div className="space-y-4 sm:space-y-6">
-        {/* Dual-Tier Tier 1: Responsive Horizontal Top Navigation Bar with Role Access */}
-        <OrderLaTopNav
+      {/* Tactile Dual-Tier Layout Wrapper: Left Collapsible Sidebar + Right Main Operations Tier */}
+      <div className="flex gap-4 xl:gap-6 items-start w-full max-w-[1720px] mx-auto">
+        {/* Dual-Tier Tier 1: Tactile Collapsible Neumorphic Left Sidebar */}
+        <NeumorphicSidebar
           routes={filteredRoutes}
           activeRoute={activeRoute}
-          onSelectRoute={setActiveRoute}
+          onSelectRoute={handleSelectRoute}
           userRole={userRole}
           currentUser={currentUser}
+          language={language}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
+          isMobileOpen={isMobileSidebarOpen}
+          onCloseMobile={() => setIsMobileSidebarOpen(false)}
           onRequestRoleSwitch={handleRequestRoleSwitch}
           onOpenSuperAdminConsole={() => setIsSuperAdminConsoleOpen(true)}
+          onOpenApprovals={() => setIsPendingApprovalsOpen(true)}
+          pendingApprovalsCount={pendingApprovalsCount}
           onLogout={handleLogout}
-          language={language}
           itemsCount={metrics.counts}
         />
 
-        {/* Dual-Tier Tier 2: Top Utility & Control Bar with Theme Switcher, Quick Swiper, Export & Print */}
-        <TopControlBar
-          theme={theme}
-          onToggleTheme={setTheme}
-          language={language}
-          onToggleLanguage={setLanguage}
-          onOpenAddItem={() => setIsAddItemOpen(true)}
-          canUndo={historyIndex > 0}
-          canRedo={historyIndex < historyStack.length - 1}
-          onUndo={handleUndo}
-          onRedo={handleRedo}
-          onSaveManual={handleManualSave}
-          onPromptRevoke={() => setIsResetConfirmOpen(true)}
-          onResetToZeroPlaceholders={handleResetToZeroPlaceholders}
-          onOpenSwiper={() => setIsSwiperOpen(true)}
-          onExportExcel={() => handleExportExcel()}
-          onCopyWhatsApp={() => handleOpenWhatsAppRecipient()}
-          onExecutePdfPrint={handleExecutePdfPrint}
-          onOpenBackupUpdate={() => setIsBackupUpdateOpen(true)}
-        />
+        {/* Dual-Tier Tier 2: Main Operations Workspace */}
+        <div className="flex-1 min-w-0 space-y-4 sm:space-y-6">
+          {/* Tier 2: Top Utility & Control Bar with Theme Switcher, Quick Swiper, Export & Print */}
+          <TopControlBar
+            theme={theme}
+            onToggleTheme={setTheme}
+            language={language}
+            onToggleLanguage={setLanguage}
+            onOpenAddItem={() => setIsAddItemOpen(true)}
+            canUndo={historyIndex > 0}
+            canRedo={historyIndex < historyStack.length - 1}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            onSaveManual={handleManualSave}
+            onPromptRevoke={() => setIsResetConfirmOpen(true)}
+            onResetToZeroPlaceholders={handleResetToZeroPlaceholders}
+            onOpenSwiper={() => setIsSwiperOpen(true)}
+            onExportExcel={() => handleExportExcel()}
+            onCopyWhatsApp={() => handleOpenWhatsAppRecipient()}
+            onExecutePdfPrint={handleExecutePdfPrint}
+            onOpenBackupUpdate={() => setIsBackupUpdateOpen(true)}
+            onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
+          />
 
-        {/* Real-time KPI Dashboard Cards */}
-        <DashboardKpi
-          totalItems={metrics.totalItems}
-          demandedItemsCount={metrics.demandedCount}
-          totalUnits={metrics.totalUnits}
-          totalBudget={metrics.totalBudget}
-          language={language}
-        />
+          {/* Real-time KPI Dashboard Cards */}
+          <DashboardKpi
+            totalItems={metrics.totalItems}
+            demandedItemsCount={metrics.demandedCount}
+            totalUnits={metrics.totalUnits}
+            totalBudget={metrics.totalBudget}
+            language={language}
+          />
 
-        {/* Filtering, Sorting & Search Bar */}
-        <FilterSortBar
-          filter={filter}
-          onSelectFilter={setFilter}
-          sortKey={sortKey}
-          sortDirection={sortDirection}
-          onSelectSort={(k, d) => {
-            setSortKey(k);
-            setSortDirection(d);
-          }}
-          onReset={handleResetFiltersAndSort}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          language={language}
-          counts={metrics.counts}
-        />
+          {/* "Open the List / فہرست کھولیں" Toggle Section Below Dashboard */}
+          <div className="flex flex-col items-center justify-center pt-1 pb-2 no-print">
+            <button
+              id="toggleItemsListBtn"
+              type="button"
+              onClick={() => setIsListVisible((prev) => !prev)}
+              className={`group inline-flex items-center gap-3 px-6 sm:px-8 py-3.5 rounded-2xl font-extrabold text-xs sm:text-sm cursor-pointer transition-all duration-200 shadow-md active:scale-95 ${
+                isListVisible
+                  ? 'neu-raised-flat text-[var(--accent-blue)] hover:neu-inset-sunken'
+                  : 'neu-btn-accent text-white hover:scale-[1.02]'
+              }`}
+              title={isListVisible ? (language === 'ur' ? 'فہرست چھپائیں' : 'Hide the complete items list') : (language === 'ur' ? 'مکمل فہرست کھولیں' : 'Open the complete items list')}
+            >
+              <div className={`p-1 rounded-xl transition-transform duration-300 ${
+                isListVisible ? 'rotate-180 text-[var(--accent-blue)] neu-inset-small' : 'bg-white/20 text-white'
+              }`}>
+                <ChevronDown className="w-4 h-4" />
+              </div>
 
-        {/* Official Printable Header with OrderLa Logo (renders only when printing/saving to PDF) */}
-        <div className="only-print pb-4 mb-4 border-b border-gray-300">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <OrderLaLogo variant="badge" size="lg" />
-              <div>
-                <h1 className="text-xl font-black text-black">OrderLa Wholesale Business OS</h1>
-                <p className="text-xs text-gray-700">
-                  {language === 'ur' ? 'ماسٹر ڈیمانڈ و خریداری ریٹ لسٹ' : 'Master Wholesale Procurement & Demand Sheet'}
-                </p>
+              <span className="tracking-wide">
+                {isListVisible
+                  ? (language === 'ur' ? 'فہرست بند کریں / Hide List' : 'Hide the List / فہرست بند کریں')
+                  : (language === 'ur' ? 'فہرست کھولیں / Open the List' : 'Open the List / فہرست کھولیں')}
+              </span>
+
+              <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-mono font-bold ${
+                isListVisible ? 'neu-inset-sm text-[var(--accent-blue)]' : 'bg-white/25 text-white'
+              }`}>
+                {filteredAndSortedItems.length} {language === 'ur' ? 'آئٹمز' : 'Items'}
+              </span>
+            </button>
+
+            {!isListVisible && (
+              <p className="text-[11px] text-[var(--text-secondary)] mt-2 font-medium text-center">
+                {language === 'ur'
+                  ? '✨ ڈیش بورڈ پرسکون و خالی موڈ میں ہے۔ مکمل اشیاء کی فہرست دیکھنے و اندراج کیلئے بٹن دبائیں۔'
+                  : '✨ Dashboard is in clean, minimal mode. Click above to expand and view the complete items list.'}
+              </p>
+            )}
+          </div>
+
+          {/* Collapsible Complete Items List (Filter bar, Table and Mobile Cards) */}
+          <div className={isListVisible ? 'space-y-4 sm:space-y-6 animate-in fade-in duration-200' : 'hidden print:block print:space-y-4'}>
+            {/* Filtering, Sorting & Search Bar */}
+            <FilterSortBar
+              filter={filter}
+              onSelectFilter={setFilter}
+              sortKey={sortKey}
+              sortDirection={sortDirection}
+              onSelectSort={(k, d) => {
+                setSortKey(k);
+                setSortDirection(d);
+              }}
+              onReset={handleResetFiltersAndSort}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              language={language}
+              counts={metrics.counts}
+            />
+
+            {/* Official Printable Header with OrderLa Logo (renders only when printing/saving to PDF) */}
+            <div className="only-print pb-4 mb-4 border-b border-gray-300">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <OrderLaLogo variant="badge" size="lg" />
+                  <div>
+                    <h1 className="text-xl font-black text-black">OrderLa Wholesale Business OS</h1>
+                    <p className="text-xs text-gray-700">
+                      {language === 'ur' ? 'ماسٹر ڈیمانڈ و خریداری ریٹ لسٹ' : 'Master Wholesale Procurement & Demand Sheet'}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right text-xs text-gray-700 space-y-0.5">
+                  <div><strong>{language === 'ur' ? 'تاریخ:' : 'Date:'}</strong> {new Date().toLocaleDateString('en-PK')}</div>
+                  <div><strong>{language === 'ur' ? 'کل اشیاء:' : 'Total Items:'}</strong> {items.length}</div>
+                </div>
               </div>
             </div>
-            <div className="text-right text-xs text-gray-700 space-y-0.5">
-              <div><strong>{language === 'ur' ? 'تاریخ:' : 'Date:'}</strong> {new Date().toLocaleDateString('en-PK')}</div>
-              <div><strong>{language === 'ur' ? 'کل اشیاء:' : 'Total Items:'}</strong> {items.length}</div>
-            </div>
+
+            {/* 1. Desktop & Tablet View: Structured Neumorphic Table */}
+            <DesktopTableView
+              items={filteredAndSortedItems}
+              sortKey={sortKey}
+              sortDirection={sortDirection}
+              onSortToggle={handleSortToggle}
+              onUpdateCell={handleUpdateCell}
+              onDeleteItem={handleDeleteItem}
+              totalUnits={metrics.totalUnits}
+              totalBudget={metrics.totalBudget}
+              demandedCount={metrics.demandedCount}
+              language={language}
+            />
+
+            {/* 2. Mobile Responsive View: Accordion Cards */}
+            <MobileCardView
+              items={filteredAndSortedItems}
+              onUpdateCell={handleUpdateCell}
+              onDeleteItem={handleDeleteItem}
+              totalUnits={metrics.totalUnits}
+              totalBudget={metrics.totalBudget}
+              language={language}
+            />
           </div>
         </div>
-
-        {/* 1. Desktop & Tablet View: Structured Neumorphic Table */}
-        <DesktopTableView
-          items={filteredAndSortedItems}
-          sortKey={sortKey}
-          sortDirection={sortDirection}
-          onSortToggle={handleSortToggle}
-          onUpdateCell={handleUpdateCell}
-          onDeleteItem={handleDeleteItem}
-          totalUnits={metrics.totalUnits}
-          totalBudget={metrics.totalBudget}
-          demandedCount={metrics.demandedCount}
-          language={language}
-        />
-
-        {/* 2. Mobile Responsive View: Accordion Cards */}
-        <MobileCardView
-          items={filteredAndSortedItems}
-          onUpdateCell={handleUpdateCell}
-          onDeleteItem={handleDeleteItem}
-          totalUnits={metrics.totalUnits}
-          totalBudget={metrics.totalBudget}
-          language={language}
-        />
       </div>
 
       {/* Modals & Notifications */}
@@ -725,11 +838,31 @@ export function App() {
         language={language}
         currentUser={currentUser}
         onUsersUpdated={() => {
-          // Refresh current user permissions if updated
+          // Refresh current user permissions and pending count if updated
           const updated = getCurrentUser();
           if (updated) {
             setCurrentUserState(updated);
           }
+          setPendingApprovalsCount(getPendingCount());
+        }}
+      />
+
+      {/* 4b. Incoming Registration Approvals Modal for Super Admin & Admin */}
+      <PendingApprovalsModal
+        isOpen={isPendingApprovalsOpen}
+        onClose={() => {
+          setIsPendingApprovalsOpen(false);
+          setPendingApprovalsCount(getPendingCount());
+        }}
+        language={language}
+        currentUser={currentUser}
+        onApprovalsChanged={() => {
+          setPendingApprovalsCount(getPendingCount());
+          showToast(language === 'ur' ? 'صارف کی رسائی کامیابی سے تفویض کر دی گئی!' : 'User access granted successfully!');
+        }}
+        onOpenFullConsole={() => {
+          setIsPendingApprovalsOpen(false);
+          setIsSuperAdminConsoleOpen(true);
         }}
       />
 

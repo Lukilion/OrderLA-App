@@ -45,6 +45,10 @@ export interface NavRoute {
   id: string;
   labelUrdu: string;
   labelEnglish: string;
+  sectionUrdu?: string;
+  sectionEnglish?: string;
+  descriptionUrdu?: string;
+  descriptionEnglish?: string;
   icon: string;
   badge?: string;
   roles: UserRole[];

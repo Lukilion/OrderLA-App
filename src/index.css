@@ -105,6 +105,42 @@ body {
 /* 4. COMPONENT STYLING */
 
 /* Neumorphic Extrusions */
+.neu-raised-flat {
+  background: var(--bg-canvas);
+  box-shadow: -5px -5px 10px #FFFFFF, 5px 5px 10px #C5C3D8;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+[data-theme="dark"] .neu-raised-flat {
+  box-shadow: -5px -5px 10px #162831, 5px 5px 10px #080e12;
+}
+
+.neu-subtle-raised {
+  background: var(--bg-canvas);
+  box-shadow: -3px -3px 6px #FFFFFF, 3px 3px 6px #C5C3D8;
+  transition: all 0.2s ease;
+}
+[data-theme="dark"] .neu-subtle-raised {
+  box-shadow: -3px -3px 6px #162831, 3px 3px 6px #080e12;
+}
+
+.neu-inset-sunken {
+  background: var(--bg-canvas);
+  box-shadow: inset 4px 4px 8px #C5C3D8, inset -4px -4px 8px #FFFFFF;
+  transition: all 0.2s ease;
+}
+[data-theme="dark"] .neu-inset-sunken {
+  box-shadow: inset 4px 4px 8px #080e12, inset -4px -4px 8px #162831;
+}
+
+.neu-inset-small {
+  background: var(--bg-canvas);
+  box-shadow: inset 2px 2px 5px #C5C3D8, inset -2px -2px 5px #FFFFFF;
+  transition: all 0.2s ease;
+}
+[data-theme="dark"] .neu-inset-small {
+  box-shadow: inset 2px 2px 5px #080e12, inset -2px -2px 5px #162831;
+}
+
 .neu-raised-lg {
   background: var(--bg-canvas);
   box-shadow: var(--shadow-raised-lg);

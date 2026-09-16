@@ -94,10 +94,15 @@ export const DEFAULT_MASTER_ITEMS: WholesaleItem[] = [
 ];
 
 export const NAV_ROUTES: NavRoute[] = [
+  // 1. Core Procurement & Demands
   {
     id: 'demand-sheet',
     labelUrdu: 'ڈیمانڈ شیٹ',
     labelEnglish: 'Demand Sheet',
+    sectionUrdu: 'بنیادی کام',
+    sectionEnglish: 'Core Operations',
+    descriptionUrdu: 'ماسٹر ہول سیل کیٹلاگ و آرڈر اندراج',
+    descriptionEnglish: 'Master wholesale catalog & demand entry',
     icon: 'fa-table-list',
     badge: '87',
     roles: ['superadmin', 'admin', 'buyer', 'auditor', 'purchaser']
@@ -106,13 +111,34 @@ export const NAV_ROUTES: NavRoute[] = [
     id: 'priority-orders',
     labelUrdu: 'فوری طلب (*)',
     labelEnglish: 'Priority Orders (*)',
+    sectionUrdu: 'بنیادی کام',
+    sectionEnglish: 'Core Operations',
+    descriptionUrdu: 'فوری خریداری کے آرڈرز اور ہائی ڈیمانڈ',
+    descriptionEnglish: 'Immediate priority procurement items',
     icon: 'fa-star',
     roles: ['superadmin', 'admin', 'buyer', 'purchaser']
   },
   {
+    id: 'demand-swiper',
+    labelUrdu: 'فوری سوائپر موڈ',
+    labelEnglish: 'Rapid Swiper Mode',
+    sectionUrdu: 'بنیادی کام',
+    sectionEnglish: 'Core Operations',
+    descriptionUrdu: 'تیز رفتار ڈیمانڈ کارڈ سوائپر',
+    descriptionEnglish: 'Fast card-by-card demand recording',
+    icon: 'fa-bolt',
+    roles: ['superadmin', 'admin', 'buyer', 'purchaser', 'auditor']
+  },
+
+  // 2. Inventory & Wholesale Markets
+  {
     id: 'low-stock',
     labelUrdu: 'کم اسٹاک الرٹس',
     labelEnglish: 'Low Stock Alerts',
+    sectionUrdu: 'مارکیٹ و اسٹاک',
+    sectionEnglish: 'Inventory & Markets',
+    descriptionUrdu: 'ختم شدہ یا کم اسٹاک اشیاء کی فہرست',
+    descriptionEnglish: 'Depleted or re-order required items',
     icon: 'fa-triangle-exclamation',
     roles: ['superadmin', 'admin', 'buyer', 'auditor', 'purchaser']
   },
@@ -120,6 +146,10 @@ export const NAV_ROUTES: NavRoute[] = [
     id: 'shalmi-market',
     labelUrdu: 'شالمی مارکیٹ',
     labelEnglish: 'Shalmi Market',
+    sectionUrdu: 'مارکیٹ و اسٹاک',
+    sectionEnglish: 'Inventory & Markets',
+    descriptionUrdu: 'شالمی لاہور مارکیٹ سپلائی پروڈکٹس',
+    descriptionEnglish: 'Shalmi Lahore wholesale vendors',
     icon: 'fa-shop',
     roles: ['superadmin', 'admin', 'buyer', 'purchaser']
   },
@@ -127,14 +157,46 @@ export const NAV_ROUTES: NavRoute[] = [
     id: 'kashif-wholesale',
     labelUrdu: 'کاشف ہول سیل',
     labelEnglish: 'Kashif Wholesale',
+    sectionUrdu: 'مارکیٹ و اسٹاک',
+    sectionEnglish: 'Inventory & Markets',
+    descriptionUrdu: 'کاشف ہول سیل ڈسٹری بیوشن اشیاء',
+    descriptionEnglish: 'Kashif wholesale distribution lines',
     icon: 'fa-warehouse',
     roles: ['superadmin', 'admin', 'buyer', 'purchaser']
   },
+
+  // 3. Analytics & System Governance
   {
     id: 'audit-reports',
     labelUrdu: 'آڈٹ و مالی رپورٹ',
     labelEnglish: 'Audit & Reports',
+    sectionUrdu: 'تجزیات و انتظام',
+    sectionEnglish: 'Analytics & Governance',
+    descriptionUrdu: 'کل لاگت، بجٹ اور اسٹاک جانچ پڑتال',
+    descriptionEnglish: 'Total cost evaluation & budget ledger',
     icon: 'fa-chart-pie',
     roles: ['superadmin', 'admin', 'auditor']
+  },
+  {
+    id: 'system-backup',
+    labelUrdu: 'ڈیٹا بیک اپ و بحالی',
+    labelEnglish: 'Backup & Restore',
+    sectionUrdu: 'تجزیات و انتظام',
+    sectionEnglish: 'Analytics & Governance',
+    descriptionUrdu: 'محفوظ فائل بیک اپ اور نئی لسٹ کی شمولیت',
+    descriptionEnglish: 'Export JSON, import database & cloud sync',
+    icon: 'fa-database',
+    roles: ['superadmin', 'admin']
+  },
+  {
+    id: 'admin-console',
+    labelUrdu: 'ایڈمن اختیارات کنسول',
+    labelEnglish: 'Authority Console',
+    sectionUrdu: 'تجزیات و انتظام',
+    sectionEnglish: 'Analytics & Governance',
+    descriptionUrdu: 'صارفین کی منظوری اور پرمیشنز کنٹرول',
+    descriptionEnglish: 'User approval & RBAC permission controls',
+    icon: 'fa-crown',
+    roles: ['superadmin', 'admin']
   }
 ];

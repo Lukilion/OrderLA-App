@@ -412,11 +412,11 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
               type="button"
               onClick={() => {
                 setAuthMode('login');
-                setRegSuccessData(null);
+                setPendingWaitUser(null);
                 setLoginError(null);
               }}
               className={`flex-1 py-3 px-4 rounded-2xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                authMode === 'login'
+                authMode === 'login' && !pendingWaitUser
                   ? 'neu-btn text-[var(--accent-blue)] shadow-md'
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-main)]'
               }`}
@@ -429,11 +429,11 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
               type="button"
               onClick={() => {
                 setAuthMode('register');
-                setRegSuccessData(null);
+                setPendingWaitUser(null);
                 setRegError(null);
               }}
               className={`flex-1 py-3 px-4 rounded-2xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                authMode === 'register'
+                authMode === 'register' && !pendingWaitUser
                   ? 'neu-btn text-[var(--accent-blue)] shadow-md'
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-main)]'
               }`}
@@ -446,7 +446,7 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
           {/* ========================================================================= */}
           {/* TAB 1: LOGIN (لاگ ان کریں - Account Level Option Removed as Requested) */}
           {/* ========================================================================= */}
-          {authMode === 'login' && (
+          {authMode === 'login' && !pendingWaitUser && (
             <div className="space-y-5 animate-in fade-in duration-200">
               
               {/* Error Message Feedback */}
@@ -561,7 +561,7 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
           {/* ========================================================================= */}
           {/* TAB 2: REGISTER NEW ACCOUNT (نیا اکاؤنٹ رجسٹر کریں) */}
           {/* ========================================================================= */}
-          {authMode === 'register' && !regSuccessData && (
+          {authMode === 'register' && !pendingWaitUser && (
             <div className="space-y-5 animate-in fade-in duration-200">
               
               {/* Admin Notification target alert banner */}
@@ -797,92 +797,93 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
           )}
 
           {/* ========================================================================= */}
-          {/* REGISTRATION SUCCESS VIEW */}
+          {/* WAITING FOR APPROVAL VIEW (ہولڈ کریں - ایڈمن منظوری کا انتظار) */}
           {/* ========================================================================= */}
-          {authMode === 'register' && regSuccessData && (
-            <div className="space-y-4 animate-in zoom-in-95 duration-200 text-center py-2">
-              <div className="w-16 h-16 rounded-full neu-inset-sm flex items-center justify-center mx-auto text-emerald-500">
-                <CheckCircle className="w-8 h-8" />
+          {pendingWaitUser && (
+            <div className="space-y-5 animate-in zoom-in-95 duration-200 text-center py-2">
+              <div className="relative w-20 h-20 rounded-full neu-inset mx-auto flex items-center justify-center text-amber-500">
+                <Hourglass className="w-10 h-10 animate-pulse text-amber-500" />
+                <span className="absolute -bottom-1 -right-1 p-1 bg-amber-500 text-white rounded-full">
+                  <Clock className="w-4 h-4" />
+                </span>
               </div>
 
-              <div className="space-y-1">
-                <h3 className="text-lg font-black text-[var(--text-main)] urdu-title">
-                  {isUrdu ? 'درخواست کامیابی سے جمع ہو گئی ہے!' : 'Registration Submitted Successfully!'}
+              <div className="space-y-1.5">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-black">
+                  <span>⏳ {isUrdu ? 'انتظار فرمائیں: ایڈمن کی منظوری درکار ہے' : 'Please Wait: Administrator Approval Required'}</span>
+                </div>
+                <h3 className="text-lg sm:text-xl font-black text-[var(--text-main)] urdu-title">
+                  {isUrdu ? 'براہِ کرم ہولڈ کریں، رسائی منظور ہونے تک انتظار فرمائیں' : 'Hold On: Account Awaiting Approval'}
                 </h3>
-                <p className="text-xs text-[var(--text-secondary)] max-w-md mx-auto">
+                <p className="text-xs sm:text-sm text-[var(--text-secondary)] max-w-md mx-auto leading-relaxed">
                   {isUrdu
-                    ? `صارف @${regSuccessData.user.username} کی درخواست ریکارڈ کر لی گئی ہے اور نوٹیفیکیشن تیار ہے۔`
-                    : `Account @${regSuccessData.user.username} has been registered and notification is prepared.`}
+                    ? `محترم ${pendingWaitUser.name}، آپ کی رجسٹریشن جمع ہو چکی ہے۔ سسٹم کا مکمل کنٹرول ایڈمنسٹریٹر اور سپر ایڈمن کے پاس ہے۔ براہِ کرم ہولڈ اور انتظار کریں جب تک آپ کی رسائی منظور نہ ہو جائے۔`
+                    : `Hello ${pendingWaitUser.name}, your account registration has been submitted. Full access decisions are strictly reserved for administrators and super admins. Please hold and wait until your access is approved and granted.`}
                 </p>
               </div>
 
               {/* Applicant Summary Card */}
-              <div className="p-4 rounded-2xl neu-inset-sm text-right text-xs space-y-1.5 max-w-md mx-auto">
-                <div className="flex justify-between border-b border-black/5 dark:border-white/5 pb-1">
-                  <span className="font-bold text-[var(--text-secondary)]">{isUrdu ? 'صارف نام:' : 'Username:'}</span>
-                  <span className="font-mono font-bold text-[var(--accent-blue)]">@{regSuccessData.user.username}</span>
+              <div className="p-4 rounded-2xl neu-inset-sm text-xs space-y-2 max-w-md mx-auto text-left">
+                <div className="flex justify-between border-b border-black/5 dark:border-white/5 pb-1.5">
+                  <span className="font-bold text-[var(--text-secondary)]">{isUrdu ? 'صارف کا نام:' : 'Username:'}</span>
+                  <span className="font-mono font-bold text-[var(--accent-blue)]">@{pendingWaitUser.username}</span>
                 </div>
-                <div className="flex justify-between border-b border-black/5 dark:border-white/5 pb-1">
-                  <span className="font-bold text-[var(--text-secondary)]">{isUrdu ? 'پورا نام:' : 'Name:'}</span>
-                  <span className="font-bold text-[var(--text-main)]">{regSuccessData.user.name}</span>
+                <div className="flex justify-between border-b border-black/5 dark:border-white/5 pb-1.5">
+                  <span className="font-bold text-[var(--text-secondary)]">{isUrdu ? 'پورا نام:' : 'Applicant Name:'}</span>
+                  <span className="font-bold text-[var(--text-main)]">{pendingWaitUser.name}</span>
                 </div>
-                <div className="flex justify-between border-b border-black/5 dark:border-white/5 pb-1">
-                  <span className="font-bold text-[var(--text-secondary)]">{isUrdu ? 'مطلوبہ رسائی:' : 'Requested Tier:'}</span>
+                <div className="flex justify-between border-b border-black/5 dark:border-white/5 pb-1.5">
+                  <span className="font-bold text-[var(--text-secondary)]">{isUrdu ? 'مطلوبہ رسائی لیول:' : 'Requested Tier:'}</span>
                   <span className="font-bold text-amber-500">
-                    {regSuccessData.user.requestedRole === 'admin'
-                      ? 'لیول 3: ایڈمن'
-                      : regSuccessData.user.requestedRole === 'auditor'
-                      ? 'لیول 2: آڈیٹر'
-                      : 'لیول 1: خریدار'}
+                    {pendingWaitUser.requestedRole === 'admin'
+                      ? (isUrdu ? 'لیول 3: ایڈمن (Admin)' : 'Tier 3: Admin')
+                      : pendingWaitUser.requestedRole === 'auditor'
+                      ? (isUrdu ? 'لیول 2: آڈیٹر (Auditor)' : 'Tier 2: Auditor')
+                      : (isUrdu ? 'لیول 1: خریدار (Buyer)' : 'Tier 1: Wholesale Buyer')}
                   </span>
                 </div>
                 <div className="flex justify-between pt-0.5">
-                  <span className="font-bold text-[var(--text-secondary)]">{isUrdu ? 'اطلاعی ای میل:' : 'Admin Target:'}</span>
-                  <span className="font-mono text-[var(--text-secondary)]">{SUPER_ADMIN_NOTIFICATION_EMAIL}</span>
+                  <span className="font-bold text-[var(--text-secondary)]">{isUrdu ? 'موجودہ کیفیت:' : 'Current Status:'}</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                    {isUrdu ? 'زیرِ جائزہ (Pending)' : 'Pending Review'}
+                  </span>
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="space-y-2.5 max-w-md mx-auto pt-2">
-                {/* Send Email to Super Admin Button */}
-                {regSuccessData.mailtoUrl && (
-                  <a
-                    href={regSuccessData.mailtoUrl}
-                    className="w-full py-3 px-4 rounded-2xl neu-btn text-xs font-black text-amber-600 dark:text-amber-400 flex items-center justify-center gap-2 cursor-pointer shadow-md hover:scale-[1.01] transition"
-                  >
-                    <Mail className="w-4 h-4" />
-                    <span>{isUrdu ? 'ایڈمنسٹریٹر کو فوری ای میل ارسال کریں' : 'Send Notification Email to Admin'}</span>
-                  </a>
-                )}
+              {/* Live Status Message Banner */}
+              {waitStatusMsg && (
+                <div className="p-3 rounded-2xl neu-inset-sm text-xs font-bold text-center animate-in fade-in max-w-md mx-auto text-[var(--text-main)]">
+                  <span>{waitStatusMsg}</span>
+                </div>
+              )}
 
-                {/* Instant Entry with Provisional Buyer Access */}
+              {/* Action Buttons: Live Check & Return to Login */}
+              <div className="space-y-2.5 max-w-md mx-auto pt-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setCurrentUser(regSuccessData.user);
-                    onLoginSuccess(regSuccessData.user);
-                  }}
-                  className="w-full py-3 px-4 rounded-2xl neu-btn text-xs font-black text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                  onClick={handleCheckApprovalStatus}
+                  disabled={isCheckingStatus}
+                  className="w-full py-3.5 px-5 rounded-2xl neu-btn text-xs sm:text-sm font-black text-[var(--accent-blue)] flex items-center justify-center gap-2 cursor-pointer shadow-md hover:scale-[1.01] transition disabled:opacity-60"
                 >
-                  <ShoppingBag className="w-4 h-4" />
+                  <RefreshCw className={`w-4 h-4 ${isCheckingStatus ? 'animate-spin' : ''}`} />
                   <span>
-                    {isUrdu
-                      ? 'بنیادی خریدار رسائی کے ساتھ فوری داخل ہوں (Continue)'
-                      : 'Continue with Provisional Buyer Access'}
+                    {isCheckingStatus
+                      ? (isUrdu ? 'تصدیقی صورتحال چیک کی جا رہی ہے...' : 'Checking approval status...')
+                      : (isUrdu ? 'منظوری کی صورتحال دوبارہ چیک کریں (Check Approval)' : 'Check Approval Status Now')}
                   </span>
                 </button>
 
-                {/* Return to Login */}
                 <button
                   type="button"
                   onClick={() => {
+                    setPendingWaitUser(null);
                     setAuthMode('login');
-                    setUsername(regSuccessData.user.username);
-                    setRegSuccessData(null);
+                    setUsername(pendingWaitUser.username);
                   }}
-                  className="text-xs text-[var(--text-secondary)] font-bold hover:text-[var(--accent-blue)] cursor-pointer"
+                  className="w-full py-2.5 text-xs text-[var(--text-secondary)] font-bold hover:text-[var(--accent-blue)] cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  {isUrdu ? 'لاگ ان اسکرین پر واپس جائیں' : 'Back to Login Screen'}
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>{isUrdu ? 'لاگ ان اسکرین پر واپس جائیں' : 'Back to Login Screen'}</span>
                 </button>
               </div>
             </div>
