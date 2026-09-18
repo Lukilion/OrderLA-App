@@ -7,6 +7,7 @@ import {
   onSnapshot,
   setDoc,
   updateDoc,
+  deleteDoc,
   getDocs,
   Unsubscribe
 } from 'firebase/firestore';
@@ -153,6 +154,7 @@ export async function updateUserStatusInCloud(
 
 /**
  * Subscribes to real-time catalog items
+ * Smart merge preserves custom added items, does NOT overwrite with hardcoded master items
  */
 export function subscribeToCloudCatalog(
   onCatalogUpdate: (items: WholesaleItem[]) => void
@@ -172,20 +174,21 @@ export function subscribeToCloudCatalog(
         cloudItems.push(docSnap.data() as WholesaleItem);
       });
 
-      // If cloud catalog has fewer items than master list (e.g. 64 instead of 95), merge with master items & seed missing
-      if (cloudItems.length < DEFAULT_MASTER_ITEMS.length) {
-        const cloudMap = new Map<number, WholesaleItem>();
-        cloudItems.forEach((it) => cloudMap.set(it.id, it));
+      // Check if any default master items are missing from cloud, and seamlessly add only missing ones
+      const cloudIds = new Set<number>(cloudItems.map((it) => it.id));
+      const missingDefaults = DEFAULT_MASTER_ITEMS.filter((def) => !cloudIds.has(def.id));
 
-        const mergedCatalog = DEFAULT_MASTER_ITEMS.map((def) => {
-          const cloud = cloudMap.get(def.id);
-          return cloud ? { ...def, ...cloud } : { ...def };
-        });
+      if (missingDefaults.length > 0) {
+        // Upload only missing defaults without clobbering any existing or custom items
+        Promise.all(
+          missingDefaults.map((defItem) =>
+            setDoc(doc(db, 'catalog', String(defItem.id)), defItem, { merge: true })
+          )
+        ).catch((err) => console.warn('[Firebase Firestore] Error syncing missing defaults:', err));
 
-        // Seed missing items in the background
-        seedInitialCatalog();
-        mergedCatalog.sort((a, b) => a.id - b.id);
-        onCatalogUpdate(mergedCatalog);
+        const combined = [...cloudItems, ...missingDefaults];
+        combined.sort((a, b) => a.id - b.id);
+        onCatalogUpdate(combined);
         return;
       }
 
@@ -199,7 +202,7 @@ export function subscribeToCloudCatalog(
 }
 
 /**
- * Seed master items list (full 95 items) to Cloud Firestore
+ * Seed master items list to Cloud Firestore (non-destructive merge)
  */
 export async function seedInitialCatalog(): Promise<void> {
   try {
@@ -213,7 +216,7 @@ export async function seedInitialCatalog(): Promise<void> {
 }
 
 /**
- * Save single updated item or rate to Cloud Firestore
+ * Save single updated item or newly added item to Cloud Firestore
  */
 export async function saveCatalogItemToCloud(item: WholesaleItem): Promise<boolean> {
   try {
@@ -221,7 +224,21 @@ export async function saveCatalogItemToCloud(item: WholesaleItem): Promise<boole
     await setDoc(itemRef, item, { merge: true });
     return true;
   } catch (err) {
-    console.error('[Firebase Firestore] Error saving catalog item:', err);
+    console.error('[Firebase Firestore] Error saving catalog item to cloud:', err);
+    return false;
+  }
+}
+
+/**
+ * Delete a catalog item from Cloud Firestore
+ */
+export async function deleteCatalogItemFromCloud(itemId: number): Promise<boolean> {
+  try {
+    const itemRef = doc(db, 'catalog', String(itemId));
+    await deleteDoc(itemRef);
+    return true;
+  } catch (err) {
+    console.error('[Firebase Firestore] Error deleting catalog item from cloud:', err);
     return false;
   }
 }
@@ -243,19 +260,20 @@ export async function fetchCloudCatalog(): Promise<WholesaleItem[]> {
       cloudItems.push(docSnap.data() as WholesaleItem);
     });
 
-    // If cloud catalog has fewer items than master list (e.g. 64 instead of 95), sync all 95
-    if (cloudItems.length < DEFAULT_MASTER_ITEMS.length) {
-      const cloudMap = new Map<number, WholesaleItem>();
-      cloudItems.forEach((it) => cloudMap.set(it.id, it));
+    // Check for any missing defaults and merge without overwriting custom items
+    const cloudIds = new Set<number>(cloudItems.map((it) => it.id));
+    const missingDefaults = DEFAULT_MASTER_ITEMS.filter((def) => !cloudIds.has(def.id));
 
-      const mergedCatalog = DEFAULT_MASTER_ITEMS.map((def) => {
-        const cloud = cloudMap.get(def.id);
-        return cloud ? { ...def, ...cloud } : { ...def };
-      });
+    if (missingDefaults.length > 0) {
+      Promise.all(
+        missingDefaults.map((defItem) =>
+          setDoc(doc(db, 'catalog', String(defItem.id)), defItem, { merge: true })
+        )
+      ).catch((err) => console.warn('[Firebase Firestore] Background default sync error:', err));
 
-      seedInitialCatalog().catch((e) => console.warn('[Firebase] Seed background error:', e));
-      mergedCatalog.sort((a, b) => a.id - b.id);
-      return mergedCatalog;
+      const combined = [...cloudItems, ...missingDefaults];
+      combined.sort((a, b) => a.id - b.id);
+      return combined;
     }
 
     cloudItems.sort((a, b) => a.id - b.id);

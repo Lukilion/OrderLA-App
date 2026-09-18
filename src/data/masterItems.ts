@@ -95,7 +95,8 @@ export const DEFAULT_MASTER_ITEMS: WholesaleItem[] = [
   { id: 92, name: "نیل پالش", cat: "شالمی", rate: 20, stock: "", demand: 0, status: "اسٹاک دستیاب ہے" },
   { id: 93, name: "وسل ۔ سیٹی", cat: "شالمی", rate: 15, stock: "33", demand: 0, status: "اسٹاک دستیاب ہے" },
   { id: 94, name: "ہاتھ والا پنکھا", cat: "شالمی", rate: 20, stock: "", demand: 0, status: "اسٹاک دستیاب ہے" },
-  { id: 95, name: "ہیر کیچڑزمکس", cat: "شالمی", rate: 17, stock: "", demand: 0, status: "اسٹاک دستیاب ہے" }
+  { id: 95, name: "ہیر کیچڑزمکس", cat: "شالمی", rate: 17, stock: "", demand: 0, status: "اسٹاک دستیاب ہے" },
+  { id: 96, name: "ربڑ بینڈ", cat: "شالمی", rate: 15, stock: "", demand: 0, status: "اسٹاک دستیاب ہے" }
 ];
 
 export const NAV_ROUTES: NavRoute[] = [
@@ -109,7 +110,7 @@ export const NAV_ROUTES: NavRoute[] = [
     descriptionUrdu: 'ماسٹر ہول سیل کیٹلاگ و آرڈر اندراج',
     descriptionEnglish: 'Master wholesale catalog & demand entry',
     icon: 'fa-table-list',
-    badge: '95',
+    badge: '96',
     roles: ['superadmin', 'admin', 'buyer', 'auditor', 'purchaser']
   },
   {

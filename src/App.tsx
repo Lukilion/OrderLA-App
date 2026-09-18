@@ -28,7 +28,7 @@ import { Toast } from './components/Toast';
 import { AuthGatewayScreen } from './components/AuthGatewayScreen';
 import { exportWholesaleExcel } from './utils/exportHelpers';
 import { getCurrentUser, hasExportPermission, getStoredUsers, saveStoredUsers, setCurrentUser as persistCurrentUser, logoutUser, getPendingCount } from './utils/authManager';
-import { subscribeToCloudUsers, subscribeToCloudCatalog, fetchCloudCatalog } from './lib/firebase';
+import { subscribeToCloudUsers, subscribeToCloudCatalog, fetchCloudCatalog, saveCatalogItemToCloud, deleteCatalogItemFromCloud } from './lib/firebase';
 import { addAuditHistoryEntry } from './utils/historyManager';
 import { generateLiveNotifications } from './utils/notificationsManager';
 import { ChevronDown, RefreshCw } from 'lucide-react';
@@ -411,13 +411,22 @@ export function App() {
       }
 
       const currentItem = items.find((i) => i.id === id);
+      let updatedItemObj: WholesaleItem | null = null;
       const updated = items.map((item) => {
         if (item.id === id) {
-          return { ...item, [field]: value };
+          updatedItemObj = { ...item, [field]: value };
+          return updatedItemObj;
         }
         return item;
       });
       commitItemsChange(updated);
+
+      // Persist rate or item modifications to Cloud Firestore
+      if (updatedItemObj) {
+        saveCatalogItemToCloud(updatedItemObj).catch((err) =>
+          console.warn('[Firebase Firestore] Failed to persist item cell update:', err)
+        );
+      }
 
       if (field === 'demand' && currentItem && String(currentItem.demand) !== String(value)) {
         addAuditHistoryEntry({
@@ -443,7 +452,7 @@ export function App() {
         });
       }
     },
-    [items, commitItemsChange, userRole, showToast, language]
+    [items, commitItemsChange, userRole, showToast, language, currentUser]
   );
 
   // Add Item handler
@@ -464,17 +473,55 @@ export function App() {
     };
     const updated = [newItem, ...items];
     commitItemsChange(updated);
-    showToast(language === 'ur' ? 'نیا آئٹم کامیابی سے شامل کر دیا گیا!' : 'New item added successfully!');
+
+    // Persist newly added item directly to Cloud Firestore
+    saveCatalogItemToCloud(newItem).then((success) => {
+      if (success) {
+        console.log(`[Firebase Firestore] Added item "${newItem.name}" saved to cloud.`);
+      }
+    }).catch((err) => {
+      console.warn('[Firebase Firestore] Cloud add error:', err);
+    });
+
+    addAuditHistoryEntry({
+      actionType: 'rate_change',
+      userName: currentUser?.name || 'Super Admin',
+      userRole: userRole,
+      descriptionEn: `Added new wholesale item "${newItem.name}" with rate Rs. ${newItem.rate}`,
+      descriptionUrdu: `نیا ہول سیل آئٹم "${newItem.name}" بنیادی ریٹ Rs. ${newItem.rate} کے ساتھ شامل کیا گیا`,
+      affectedItem: newItem.name,
+      newValue: String(newItem.rate)
+    });
+
+    showToast(language === 'ur' ? 'نیا آئٹم کلاؤڈ ڈیٹا بیس میں محفوظ کر دیا گیا!' : 'New item saved to database successfully!');
   };
 
   // Delete item handler
   const handleDeleteItem = useCallback(
     (id: number) => {
+      const itemToDelete = items.find((i) => i.id === id);
       const updated = items.filter((i) => i.id !== id);
       commitItemsChange(updated);
-      showToast(language === 'ur' ? 'آئٹم ڈیلیٹ کر دیا گیا' : 'Item removed');
+
+      // Remove from Cloud Firestore
+      deleteCatalogItemFromCloud(id).catch((err) => {
+        console.warn('[Firebase Firestore] Cloud delete error:', err);
+      });
+
+      if (itemToDelete) {
+        addAuditHistoryEntry({
+          actionType: 'rate_change',
+          userName: currentUser?.name || 'Super Admin',
+          userRole: userRole,
+          descriptionEn: `Deleted wholesale item "${itemToDelete.name}" from catalog`,
+          descriptionUrdu: `ہول سیل آئٹم "${itemToDelete.name}" فہرست سے حذف کیا گیا`,
+          affectedItem: itemToDelete.name
+        });
+      }
+
+      showToast(language === 'ur' ? 'آئٹم ڈیٹا بیس سے ڈیلیٹ کر دیا گیا' : 'Item removed from database');
     },
-    [items, commitItemsChange, showToast, language]
+    [items, commitItemsChange, showToast, language, currentUser, userRole]
   );
 
   // Reset to initial master items
