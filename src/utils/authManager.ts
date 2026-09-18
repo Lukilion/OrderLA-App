@@ -232,6 +232,20 @@ Security & Access Control Protocol`;
 }
 
 /**
+ * Normalizes credentials (NFKC, Urdu/Arabic numerals to ASCII, strips zero-width spaces & leading @)
+ * Guarantees cross-keyboard/cross-language login parity between English and Urdu.
+ */
+export function normalizeAuthString(str: string): string {
+  if (!str) return '';
+  return str
+    .normalize('NFKC')
+    .replace(/[\u200B-\u200D\uFEFF\u00A0]/g, '')
+    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 1632))
+    .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 1776))
+    .trim();
+}
+
+/**
  * Register a new user account with pending approval status and generate admin notification
  */
 export function registerUserAccount(data: {
@@ -250,14 +264,14 @@ export function registerUserAccount(data: {
 } {
   const users = getStoredUsers();
 
-  const trimmedUsername = data.username.trim();
+  const trimmedUsername = normalizeAuthString(data.username).replace(/^@+/, '');
   if (!trimmedUsername) {
     return { success: false, error: 'براہِ کرم یوزر نیم درج کریں (Username is required)' };
   }
 
-  // Check existing
+  // Check existing (normalized)
   const exists = users.some(
-    (u) => u.username.trim().toLowerCase() === trimmedUsername.toLowerCase()
+    (u) => normalizeAuthString(u.username).toLowerCase().replace(/^@+/, '') === trimmedUsername.toLowerCase()
   );
   if (exists) {
     return { success: false, error: 'یہ صارف نام پہلے سے زیر استعمال ہے (Username already exists)' };
@@ -400,17 +414,25 @@ export function authenticateUser(
   isRejected?: boolean;
 } {
   const users = getStoredUsers();
-  const matched = users.find(
-    (u) => u.username.trim().toLowerCase() === username.trim().toLowerCase()
-  );
+  const cleanInputUser = normalizeAuthString(username).toLowerCase().replace(/^@+/, '');
+
+  const matched = users.find((u) => {
+    const cleanDbUser = normalizeAuthString(u.username).toLowerCase().replace(/^@+/, '');
+    return cleanDbUser === cleanInputUser;
+  });
 
   if (!matched) {
     return { success: false, error: 'صارف کا نام موجود نہیں ہے (User not found)' };
   }
 
-  // If user has a password, verify it exactly
-  if (matched.password && matched.password !== pass.trim()) {
-    return { success: false, error: 'غلط پاس ورڈ (Incorrect password)' };
+  // If user has a password, verify it: support exact match OR normalized digits/unicode match
+  if (matched.password) {
+    const rawPass = (pass || '').trim();
+    const exactMatch = matched.password === rawPass;
+    const normalizedMatch = normalizeAuthString(matched.password) === normalizeAuthString(pass || '');
+    if (!exactMatch && !normalizedMatch) {
+      return { success: false, error: 'غلط پاس ورڈ (Incorrect password)' };
+    }
   }
 
   // Security Check: Pending approval accounts cannot enter the app

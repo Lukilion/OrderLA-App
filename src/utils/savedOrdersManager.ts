@@ -1,4 +1,5 @@
 import { SavedOrder, WholesaleItem } from '../types';
+import { saveOrderToCloud, deleteOrderFromCloud } from '../lib/firebase';
 
 const STORAGE_KEY = 'wholesale_saved_orders_v2';
 
@@ -94,6 +95,12 @@ export function saveNewOrder(
   } catch (err) {
     console.error('Failed to save order to localStorage', err);
   }
+
+  // Cloud Firestore synchronization
+  saveOrderToCloud(newOrder).catch((err) => {
+    console.warn('[Firebase] Order cloud sync failed:', err);
+  });
+
   return newOrder;
 }
 
@@ -105,6 +112,12 @@ export function deleteSavedOrder(orderId: string): SavedOrder[] {
   } catch (err) {
     console.error('Failed to delete order from localStorage', err);
   }
+
+  // Cloud Firestore deletion
+  deleteOrderFromCloud(orderId).catch((err) => {
+    console.warn('[Firebase] Order cloud delete failed:', err);
+  });
+
   return updated;
 }
 
@@ -113,11 +126,19 @@ export function updateSavedOrderStatus(
   newStatus: 'draft' | 'completed' | 'sent'
 ): SavedOrder[] {
   const currentOrders = getSavedOrders();
+  const target = currentOrders.find((o) => o.id === orderId);
   const updated = currentOrders.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o));
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   } catch (err) {
     console.error('Failed to update order status', err);
   }
+
+  if (target) {
+    saveOrderToCloud({ ...target, status: newStatus }).catch((err) => {
+      console.warn('[Firebase] Order status cloud update failed:', err);
+    });
+  }
+
   return updated;
 }

@@ -1,4 +1,5 @@
 import { AuditHistoryEntry, UserRole } from '../types';
+import { saveAuditEntryToCloud } from '../lib/firebase';
 
 const STORAGE_KEY = 'wholesale_audit_history_v1';
 
@@ -100,6 +101,11 @@ export function logAuditEvent(entry: {
   } catch (err) {
     console.error('Failed to write audit history', err);
   }
+
+  // Cloud Firestore synchronization
+  saveAuditEntryToCloud(newEntry).catch((err) => {
+    console.warn('[Firebase] Audit cloud sync failed:', err);
+  });
 }
 
 export function clearAuditHistory(): void {

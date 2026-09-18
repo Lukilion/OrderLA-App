@@ -137,7 +137,27 @@ export function App() {
   const [activeRoute, setActiveRoute] = useState<string>('demand-sheet');
   const [primaryTab, setPrimaryTab] = useState<PrimaryNavTab>('home');
   const [notificationsTick, setNotificationsTick] = useState<number>(0);
-  const [language, setLanguage] = useState<Language>('ur');
+  // Language State (Defaults to 'en' as requested, with persistence for user selection)
+  const [language, setLanguage] = useState<Language>(() => {
+    try {
+      const stored = localStorage.getItem('orderla_app_language');
+      if (stored === 'en' || stored === 'ur') {
+        return stored;
+      }
+    } catch {
+      /* ignore */
+    }
+    return 'en';
+  });
+
+  // Sync language selection to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('orderla_app_language', language);
+    } catch {
+      /* ignore */
+    }
+  }, [language]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     try {
       const stored = localStorage.getItem('orderla_sidebar_collapsed');
@@ -974,6 +994,7 @@ export function App() {
               }
             }}
             canAddItem={userRole === 'admin' || userRole === 'superadmin'}
+            userRole={userRole}
             activeTab={primaryTab}
             onSelectTab={setPrimaryTab}
             unreadNotificationsCount={unreadNotificationsCount}

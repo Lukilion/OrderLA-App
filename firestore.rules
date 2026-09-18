@@ -11,6 +11,16 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // Saved orders across devices
+    match /saved_orders/{orderId} {
+      allow read, write: if true;
+    }
+
+    // Enterprise audit history logs
+    match /audit_history/{entryId} {
+      allow read, write: if true;
+    }
+
     // Connectivity verification probe
     match /test/{docId} {
       allow read, write: if true;

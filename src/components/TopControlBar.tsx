@@ -26,7 +26,7 @@ import {
   Bell,
   User
 } from 'lucide-react';
-import { Language, Theme, PrimaryNavTab } from '../types';
+import { Language, Theme, PrimaryNavTab, UserRole } from '../types';
 import { DEFAULT_MASTER_ITEMS } from '../data/masterItems';
 
 interface TopControlBarProps {
@@ -49,6 +49,7 @@ interface TopControlBarProps {
   onOpenBackupUpdate?: () => void;
   onOpenMobileMenu?: () => void;
   canAddItem?: boolean;
+  userRole?: UserRole;
   activeTab?: PrimaryNavTab;
   onSelectTab?: (tab: PrimaryNavTab) => void;
   unreadNotificationsCount?: number;
@@ -74,6 +75,7 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
   onOpenBackupUpdate,
   onOpenMobileMenu,
   canAddItem = true,
+  userRole = 'buyer',
   activeTab = 'home',
   onSelectTab,
   unreadNotificationsCount = 0
@@ -81,6 +83,19 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const [isEditSubOpen, setIsEditSubOpen] = useState(false);
   const [isPdfSubOpen, setIsPdfSubOpen] = useState(false);
+
+  // Determine authorized capabilities based on role
+  const isAdminOrSuperAdmin = userRole === 'admin' || userRole === 'superadmin';
+  const showAddItem = canAddItem && isAdminOrSuperAdmin;
+  const showBackupUpdate = isAdminOrSuperAdmin && !!onOpenBackupUpdate;
+  const showDestructiveEdits = isAdminOrSuperAdmin;
+
+  // Calculate dynamic operations count for current user role
+  let opsCount = 3; // Edit, PDF, Excel, WhatsApp
+  if (showAddItem) opsCount += 1;
+  if (showBackupUpdate) opsCount += 1;
+  // plus WhatsApp makes 4 base + optional = total operations
+  const totalOperations = (showAddItem ? 1 : 0) + 1 + (showBackupUpdate ? 1 : 0) + 3; // Edit + PDF + Excel + WA
 
   // PDF Customization state
   const [pdfShowDashboard, setPdfShowDashboard] = useState(true);
@@ -267,28 +282,28 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
             {isUrdu ? 'ڈیمانڈ شیٹ (Demand Sheet)' : 'Wholesale Demand Sheet'}
           </h1>
 
-          {/* ACTIONS BUTTON UNDER DEMAND SHEET WITH ALL 6 OPERATIONS HIDDEN INSIDE */}
+          {/* ACTIONS BUTTON UNDER DEMAND SHEET WITH DYNAMIC ROLE-BASED OPERATIONS */}
           <div className="pt-1.5 relative inline-block text-right rtl:text-right" ref={actionsRef}>
             <button
               id="demandSheetActionsBtn"
               type="button"
               onClick={() => setIsActionsOpen(!isActionsOpen)}
               className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-2xl neu-raised-flat text-xs font-extrabold text-[var(--text-main)] hover:text-[var(--accent-blue)] active:neu-inset-sunken cursor-pointer transition-all duration-200 shadow-sm group"
-              title={isUrdu ? 'ڈیمانڈ شیٹ کی کارروائیاں کھولیں' : 'Open Demand Sheet Actions'}
+              title={isUrdu ? 'ڈیمانڈ شیٹ کے اقدامات کھولیں' : 'Open Demand Sheet Actions'}
             >
               <div className="p-1 rounded-lg neu-inset-small text-[var(--accent-blue)] group-hover:scale-110 transition-transform">
                 <Sliders className="w-3.5 h-3.5" />
               </div>
               <span className="text-xs tracking-wide">
-                {isUrdu ? 'کارروائیاں (Actions)' : 'Actions (کارروائیاں)'}
+                {isUrdu ? 'اقدامات (Actions)' : 'Actions (اقدامات)'}
               </span>
               <span className="text-[10px] neu-inset-small px-2 py-0.5 rounded-full text-[var(--accent-blue)] font-mono font-bold">
-                6
+                {totalOperations}
               </span>
               <ChevronDown className={`w-3.5 h-3.5 text-[var(--text-secondary)] transition-transform duration-200 ${isActionsOpen ? 'rotate-180 text-[var(--accent-blue)]' : ''}`} />
             </button>
 
-            {/* Actions Popover containing the 6 hidden actions */}
+            {/* Actions Popover containing the role-permitted actions */}
             {isActionsOpen && (
               <div className="absolute left-0 rtl:right-0 rtl:left-auto mt-2 w-80 sm:w-96 rounded-3xl neu-raised-lg p-3 sm:p-4 z-40 space-y-2.5 text-xs font-medium animate-in fade-in zoom-in-95 duration-150 max-h-[75vh] overflow-y-auto scrollbar-thin shadow-2xl">
                 {/* Header */}
@@ -296,63 +311,43 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-[var(--accent-blue)] animate-pulse" />
                     <span className="font-black text-[13px] text-[var(--text-main)]">
-                      {isUrdu ? 'ڈیمانڈ شیٹ کارروائیاں' : 'Demand Sheet Actions'}
+                      {isUrdu ? 'ڈیمانڈ شیٹ کے اقدامات' : 'Demand Sheet Actions'}
                     </span>
                   </div>
                   <span className="text-[10px] neu-inset-sm px-2 py-0.5 rounded-full text-[var(--accent-blue)] font-bold">
-                    6 Operations
+                    {isUrdu ? `${totalOperations} مجاز اقدامات` : `${totalOperations} Operations`}
                   </span>
                 </div>
 
-                {/* 1. نیا آئٹم (Restricted to Admin / Superadmin) */}
-                <button
-                  disabled={!canAddItem}
-                  title={
-                    !canAddItem
-                      ? isUrdu
-                        ? 'نیا آئٹم شامل کرنے کا اختیار صرف ایڈمن یا سپر ایڈمن کو ہے'
-                        : 'Only Admin or Super Admin can add new items'
-                      : undefined
-                  }
-                  onClick={() => {
-                    if (canAddItem) {
+                {/* 1. نیا آئٹم (Only visible for Admin & Super Admin; disappears for Buyer) */}
+                {showAddItem && (
+                  <button
+                    onClick={() => {
                       onOpenAddItem();
                       setIsActionsOpen(false);
-                    }
-                  }}
-                  className={`w-full text-right rtl:text-right px-3.5 py-2.5 rounded-2xl neu-btn flex items-center justify-between transition-all ${
-                    !canAddItem
-                      ? 'opacity-40 cursor-not-allowed text-[var(--text-secondary)]'
-                      : 'cursor-pointer text-[var(--text-main)] hover:text-emerald-500 group'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className={`w-7 h-7 rounded-xl neu-inset-sm flex items-center justify-center ${
-                      !canAddItem ? 'text-[var(--text-secondary)]' : 'text-emerald-500 group-hover:scale-110 transition-transform'
-                    }`}>
-                      <Plus className="w-4 h-4" />
+                    }}
+                    className="w-full text-right rtl:text-right px-3.5 py-2.5 rounded-2xl neu-btn flex items-center justify-between transition-all cursor-pointer text-[var(--text-main)] hover:text-emerald-500 group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-xl neu-inset-sm flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform">
+                        <Plus className="w-4 h-4" />
+                      </div>
+                      <div className="flex flex-col text-left rtl:text-right">
+                        <span className="font-extrabold text-xs text-[var(--text-main)] group-hover:text-emerald-500">
+                          {isUrdu ? 'نیا آئٹم شامل کریں' : 'New Item (نیا آئٹم)'}
+                        </span>
+                        <span className="text-[10px] text-[var(--text-secondary)]">
+                          {isUrdu ? 'نئی پروڈکٹ کیٹلاگ میں شامل کریں' : 'Add new wholesale item to catalog'}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex flex-col text-left rtl:text-right">
-                      <span className={`font-extrabold text-xs ${
-                        !canAddItem ? 'text-[var(--text-secondary)]' : 'text-[var(--text-main)] group-hover:text-emerald-500'
-                      }`}>
-                        {isUrdu ? '1. نیا آئٹم' : '1. New Item (نیا آئٹم)'}
-                      </span>
-                      <span className="text-[10px] text-[var(--text-secondary)]">
-                        {!canAddItem
-                          ? (isUrdu ? 'صرف ایڈمن کیلئے مجاز' : 'Restricted to Admin only')
-                          : (isUrdu ? 'نئی پروڈکٹ کیٹلاگ میں شامل کریں' : 'Add new wholesale item to catalog')}
-                      </span>
-                    </div>
-                  </div>
-                  <span className={`text-[10px] neu-inset-sm px-2 py-0.5 rounded-md font-bold ${
-                    !canAddItem ? 'text-[var(--text-secondary)]' : 'text-emerald-500'
-                  }`}>
-                    {!canAddItem ? 'Locked' : '+ Add'}
-                  </span>
-                </button>
+                    <span className="text-[10px] neu-inset-sm px-2 py-0.5 rounded-md font-bold text-emerald-500">
+                      + Add
+                    </span>
+                  </button>
+                )}
 
-                {/* 2. ترمیم */}
+                {/* 2. ترمیم (Edit Operations) */}
                 <div className="rounded-2xl neu-inset-sm p-2 space-y-1.5">
                   <button
                     type="button"
@@ -365,10 +360,10 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
                       </div>
                       <div className="flex flex-col text-left rtl:text-right">
                         <span className="font-extrabold text-xs">
-                          {isUrdu ? '2. ترمیم' : '2. Edit (ترمیم)'}
+                          {isUrdu ? 'ترمیم و تدوین' : 'Edit (ترمیم)'}
                         </span>
                         <span className="text-[10px] text-[var(--text-secondary)]">
-                          {isUrdu ? 'واپس، محفوظ، یا ری سیٹ کریں' : 'Undo, redo, save, reset'}
+                          {isUrdu ? 'واپس، محفوظ، یا دوبارہ کریں' : 'Undo, redo, save changes'}
                         </span>
                       </div>
                     </div>
@@ -416,43 +411,50 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
                         <Check className="w-3 h-3 text-emerald-500" />
                       </button>
 
-                      <button
-                        onClick={() => {
-                          onResetToZeroPlaceholders();
-                          setIsActionsOpen(false);
-                        }}
-                        className="w-full text-right rtl:text-right px-3 py-1.5 rounded-xl neu-btn text-amber-600 dark:text-amber-400 flex items-center justify-between cursor-pointer hover:text-amber-500"
-                      >
-                        <span className="flex items-center gap-2">
-                          <Eraser className="w-3.5 h-3.5 text-amber-500" />
-                          <span>{isUrdu ? 'اسٹاک، ڈیمانڈ و کیفیت صفر کریں' : 'Reset Stock, Demand & Status (0)'}</span>
-                        </span>
-                        <span className="text-[10px] neu-inset-sm px-1.5 py-0.5 rounded-full text-amber-500 font-mono font-bold">0</span>
-                      </button>
+                      {/* Destructive actions: Disappear for Buyers, appear automatically for Admin/Superadmin */}
+                      {showDestructiveEdits && (
+                        <>
+                          <button
+                            onClick={() => {
+                              onResetToZeroPlaceholders();
+                              setIsActionsOpen(false);
+                            }}
+                            className="w-full text-right rtl:text-right px-3 py-1.5 rounded-xl neu-btn text-amber-600 dark:text-amber-400 flex items-center justify-between cursor-pointer hover:text-amber-500"
+                          >
+                            <span className="flex items-center gap-2">
+                              <Eraser className="w-3.5 h-3.5 text-amber-500" />
+                              <span>{isUrdu ? 'اسٹاک، ڈیمانڈ و کیفیت صفر کریں' : 'Reset Stock, Demand & Status (0)'}</span>
+                            </span>
+                            <span className="text-[10px] neu-inset-sm px-1.5 py-0.5 rounded-full text-amber-500 font-mono font-bold">0</span>
+                          </button>
 
-                      <button
-                        onClick={() => {
-                          onPromptRevoke();
-                          setIsActionsOpen(false);
-                        }}
-                        className="w-full text-right rtl:text-right px-3 py-1.5 rounded-xl neu-btn text-rose-500 flex items-center justify-between cursor-pointer"
-                      >
-                        <span className="flex items-center gap-2">
-                          <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                          <span>{isUrdu ? 'اصل لسٹ پر بحال کریں (Revoke)' : 'Revoke to Default'}</span>
-                        </span>
-                        <span className="text-[10px] text-rose-500">{DEFAULT_MASTER_ITEMS.length} items</span>
-                      </button>
+                          <button
+                            onClick={() => {
+                              onPromptRevoke();
+                              setIsActionsOpen(false);
+                            }}
+                            className="w-full text-right rtl:text-right px-3 py-1.5 rounded-xl neu-btn text-rose-500 flex items-center justify-between cursor-pointer"
+                          >
+                            <span className="flex items-center gap-2">
+                              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                              <span>{isUrdu ? 'اصل لسٹ پر بحال کریں (Revoke)' : 'Revoke to Default'}</span>
+                            </span>
+                            <span className="text-[10px] text-rose-500">{DEFAULT_MASTER_ITEMS.length} items</span>
+                          </button>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
 
-                {/* 3. اپ ڈیٹ و بیک اپ */}
-                {onOpenBackupUpdate && (
+                {/* 3. اپ ڈیٹ و بیک اپ (Only visible for Admin/Superadmin, disappears for Buyer) */}
+                {showBackupUpdate && (
                   <button
                     onClick={() => {
-                      onOpenBackupUpdate();
-                      setIsActionsOpen(false);
+                      if (onOpenBackupUpdate) {
+                        onOpenBackupUpdate();
+                        setIsActionsOpen(false);
+                      }
                     }}
                     className="w-full text-right rtl:text-right px-3.5 py-2.5 rounded-2xl neu-btn text-[var(--text-main)] hover:text-[var(--accent-blue)] flex items-center justify-between cursor-pointer group transition-all"
                   >
@@ -462,7 +464,7 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
                       </div>
                       <div className="flex flex-col text-left rtl:text-right">
                         <span className="font-extrabold text-xs text-[var(--text-main)] group-hover:text-[var(--accent-blue)]">
-                          {isUrdu ? '3. اپ ڈیٹ و بیک اپ' : '3. Backup & Update (اپ ڈیٹ و بیک اپ)'}
+                          {isUrdu ? 'اپ ڈیٹ و بیک اپ' : 'Backup & Update (بیک اپ)'}
                         </span>
                         <span className="text-[10px] text-[var(--text-secondary)]">
                           {isUrdu ? 'JSON فائل بیک اپ، امپورٹ و ڈیٹا بحالی' : 'Export JSON, import database & sync'}
@@ -473,7 +475,7 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
                   </button>
                 )}
 
-                {/* 4. پیڈیایف */}
+                {/* PDF & Print */}
                 <div className="rounded-2xl neu-inset-sm p-2 space-y-1.5">
                   <button
                     type="button"
@@ -486,7 +488,7 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
                       </div>
                       <div className="flex flex-col text-left rtl:text-right">
                         <span className="font-extrabold text-xs">
-                          {isUrdu ? '4. پیڈیایف' : '4. PDF & Print (پیڈیایف)'}
+                          {isUrdu ? 'پی ڈی ایف و پرنٹ' : 'PDF & Print (پی ڈی ایف)'}
                         </span>
                         <span className="text-[10px] text-[var(--text-secondary)]">
                           {isUrdu ? 'پرنٹ ترتیبات، کالموں کا انتخاب' : 'Print & column customization'}
@@ -559,7 +561,7 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
                   )}
                 </div>
 
-                {/* 5. ایکسل */}
+                {/* Excel Export */}
                 <button
                   onClick={() => {
                     onExportExcel();
@@ -573,7 +575,7 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
                     </div>
                     <div className="flex flex-col text-left rtl:text-right">
                       <span className="font-extrabold text-xs text-[var(--text-main)] group-hover:text-emerald-600">
-                        {isUrdu ? '5. ایکسل' : '5. Excel (ایکسل)'}
+                        {isUrdu ? 'ایکسل فائل برآمد' : 'Excel Export (ایکسل)'}
                       </span>
                       <span className="text-[10px] text-[var(--text-secondary)]">
                         {isUrdu ? 'ایکسل (.xlsx) فائل ڈاؤنلوڈ کریں' : 'Download spreadsheet file'}
@@ -583,7 +585,7 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
                   <span className="text-[10px] neu-inset-sm px-2 py-0.5 rounded-md text-emerald-600 font-mono font-bold">.XLSX</span>
                 </button>
 
-                {/* 6. وٹس ایپ */}
+                {/* WhatsApp Dispatch */}
                 <button
                   onClick={() => {
                     onCopyWhatsApp();
@@ -597,7 +599,7 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
                     </div>
                     <div className="flex flex-col text-left rtl:text-right">
                       <span className="font-extrabold text-xs text-[var(--text-main)] group-hover:text-emerald-500">
-                        {isUrdu ? '6. وٹس ایپ' : '6. WhatsApp (وٹس ایپ)'}
+                        {isUrdu ? 'واٹس ایپ ڈسپیچ' : 'WhatsApp Order (واٹس ایپ)'}
                       </span>
                       <span className="text-[10px] text-[var(--text-secondary)]">
                         {isUrdu ? 'مطلوبہ مال کا آرڈر ٹیکسٹ کاپی کریں' : 'Copy formatted demand order message'}

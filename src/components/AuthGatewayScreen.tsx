@@ -322,24 +322,6 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
       {/* Main Authentication Stage Container */}
       <main className="w-full max-w-2xl mx-auto my-auto py-4 sm:py-6">
         <div className="w-full neu-raised rounded-4xl p-5 sm:p-8 space-y-6 transition-all border border-black/5 dark:border-white/5">
-          
-          {/* Welcome Header */}
-          <div className="text-center space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full neu-inset-sm text-xs font-bold text-[var(--accent-blue)]">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>{isUrdu ? 'پہلا مرحلہ: پورٹل تصدیق و رجسٹریشن' : 'Stage 1: Access & Registration Portal'}</span>
-            </div>
-            
-            <h1 className="text-xl sm:text-2xl font-black text-[var(--text-main)] tracking-tight urdu-title">
-              {isUrdu ? 'آرڈر لا ہول سیل بزنس آپریٹنگ سسٹم' : 'OrderLa Wholesale Business OS'}
-            </h1>
-            
-            <p className="text-xs sm:text-sm text-[var(--text-secondary)] font-medium max-w-md mx-auto">
-              {isUrdu
-                ? 'جاری رکھنے کے لیے اپنے رجسٹرڈ اکاؤنٹ میں لاگ ان کریں یا نیا اکاؤنٹ بنائیں۔'
-                : 'Please log in with your credentials or register a new account to enter the system.'}
-            </p>
-          </div>
 
           {pendingWaitUser ? (
             /* Pending Approval Waiting State View */
@@ -442,7 +424,7 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
               }`}
             >
               <LogIn className="w-4 h-4" />
-              <span>{isUrdu ? '1. لاگ ان کریں (Sign In)' : '1. Sign In'}</span>
+              <span>Login</span>
             </button>
 
             <button
@@ -459,7 +441,7 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
               }`}
             >
               <UserPlus className="w-4 h-4" />
-              <span>{isUrdu ? '2. نیا اکاؤنٹ بنائیں (Register)' : '2. Register Account'}</span>
+              <span>Sign Up</span>
             </button>
           </div>
 
@@ -520,7 +502,6 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder={isUrdu ? 'پاس ورڈ درج کریں' : 'Enter password'}
                       className="w-full pr-10 pl-11 py-3 rounded-2xl neu-inset text-sm font-extrabold text-[var(--text-main)] placeholder:text-[var(--text-secondary)]/50 focus:outline-hidden focus:ring-2 focus:ring-[var(--accent-blue)]/30 transition font-mono"
-                      required
                     />
                     <button
                       type="button"
@@ -539,7 +520,7 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
                   className="w-full py-3.5 px-6 rounded-2xl neu-btn text-sm font-black text-[var(--accent-blue)] hover:text-[var(--accent-blue)] flex items-center justify-center gap-2 cursor-pointer transition shadow-md group mt-2"
                 >
                   <LogIn className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                  <span>{isUrdu ? 'لاگ ان کریں اور سسٹم میں داخل ہوں' : 'Sign In to System'}</span>
+                  <span>{isUrdu ? 'لاگ ان کریں' : 'Login'}</span>
                   {isUrdu ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
                 </button>
               </form>

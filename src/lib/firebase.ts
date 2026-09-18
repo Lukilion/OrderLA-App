@@ -12,7 +12,7 @@ import {
   Unsubscribe
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { UserAccount, WholesaleItem, UserRole, UserApprovalStatus } from '../types';
+import { UserAccount, WholesaleItem, UserRole, UserApprovalStatus, SavedOrder, AuditHistoryEntry } from '../types';
 import { DEFAULT_USERS } from '../data/defaultUsers';
 import { DEFAULT_MASTER_ITEMS } from '../data/masterItems';
 
@@ -283,3 +283,140 @@ export async function fetchCloudCatalog(): Promise<WholesaleItem[]> {
     throw err;
   }
 }
+
+// ============================================================================
+// 3. SAVED ORDERS CLOUD SYNCHRONIZATION
+// ============================================================================
+
+/**
+ * Subscribes to real-time changes in Saved Orders collection
+ */
+export function subscribeToCloudSavedOrders(
+  onOrdersUpdate: (orders: SavedOrder[]) => void
+): Unsubscribe {
+  const ordersColRef = collection(db, 'saved_orders');
+
+  return onSnapshot(
+    ordersColRef,
+    (snapshot) => {
+      const orders: SavedOrder[] = [];
+      snapshot.forEach((docSnap) => {
+        orders.push(docSnap.data() as SavedOrder);
+      });
+      orders.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      onOrdersUpdate(orders);
+    },
+    (err) => {
+      console.warn('[Firebase Firestore] Orders subscription fallback:', err);
+    }
+  );
+}
+
+/**
+ * Save an order to Cloud Firestore
+ */
+export async function saveOrderToCloud(order: SavedOrder): Promise<boolean> {
+  try {
+    const orderRef = doc(db, 'saved_orders', order.id);
+    await setDoc(orderRef, order, { merge: true });
+    return true;
+  } catch (err) {
+    console.error('[Firebase Firestore] Error saving order to cloud:', err);
+    return false;
+  }
+}
+
+/**
+ * Delete an order from Cloud Firestore
+ */
+export async function deleteOrderFromCloud(orderId: string): Promise<boolean> {
+  try {
+    const orderRef = doc(db, 'saved_orders', orderId);
+    await deleteDoc(orderRef);
+    return true;
+  } catch (err) {
+    console.error('[Firebase Firestore] Error deleting order from cloud:', err);
+    return false;
+  }
+}
+
+/**
+ * Fetch all saved orders from Cloud Firestore
+ */
+export async function fetchCloudSavedOrders(): Promise<SavedOrder[]> {
+  try {
+    const ordersColRef = collection(db, 'saved_orders');
+    const snapshot = await getDocs(ordersColRef);
+    const orders: SavedOrder[] = [];
+    snapshot.forEach((docSnap) => {
+      orders.push(docSnap.data() as SavedOrder);
+    });
+    orders.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    return orders;
+  } catch (err) {
+    console.error('[Firebase Firestore] Error fetching saved orders from cloud:', err);
+    return [];
+  }
+}
+
+// ============================================================================
+// 4. ENTERPRISE AUDIT HISTORY CLOUD SYNCHRONIZATION
+// ============================================================================
+
+/**
+ * Subscribes to real-time changes in Audit History collection
+ */
+export function subscribeToCloudAuditHistory(
+  onHistoryUpdate: (entries: AuditHistoryEntry[]) => void
+): Unsubscribe {
+  const auditColRef = collection(db, 'audit_history');
+
+  return onSnapshot(
+    auditColRef,
+    (snapshot) => {
+      const entries: AuditHistoryEntry[] = [];
+      snapshot.forEach((docSnap) => {
+        entries.push(docSnap.data() as AuditHistoryEntry);
+      });
+      entries.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      onHistoryUpdate(entries);
+    },
+    (err) => {
+      console.warn('[Firebase Firestore] Audit subscription fallback:', err);
+    }
+  );
+}
+
+/**
+ * Save an audit event to Cloud Firestore
+ */
+export async function saveAuditEntryToCloud(entry: AuditHistoryEntry): Promise<boolean> {
+  try {
+    const auditRef = doc(db, 'audit_history', entry.id);
+    await setDoc(auditRef, entry, { merge: true });
+    return true;
+  } catch (err) {
+    console.error('[Firebase Firestore] Error logging audit event to cloud:', err);
+    return false;
+  }
+}
+
+/**
+ * Fetch all audit history from Cloud Firestore
+ */
+export async function fetchCloudAuditHistory(): Promise<AuditHistoryEntry[]> {
+  try {
+    const auditColRef = collection(db, 'audit_history');
+    const snapshot = await getDocs(auditColRef);
+    const entries: AuditHistoryEntry[] = [];
+    snapshot.forEach((docSnap) => {
+      entries.push(docSnap.data() as AuditHistoryEntry);
+    });
+    entries.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    return entries;
+  } catch (err) {
+    console.error('[Firebase Firestore] Error fetching audit history from cloud:', err);
+    return [];
+  }
+}
+

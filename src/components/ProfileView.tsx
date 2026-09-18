@@ -14,7 +14,6 @@ import {
   FileText, 
   MessageSquare, 
   CheckCircle2, 
-  XCircle, 
   LogOut, 
   Settings, 
   Users, 
@@ -147,28 +146,33 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </div>
       </div>
 
-      {/* Permissions Grid */}
+      {/* Permissions Grid - Only permitted capabilities are displayed; restricted items disappear until role is promoted */}
       <div className="neu-raised rounded-3xl p-6 bg-[var(--bg-canvas)] space-y-4">
-        <h3 className="text-base font-extrabold text-[var(--text-main)] flex items-center gap-2">
-          <ShieldCheck className="w-5 h-5 text-[var(--accent-blue)]" />
-          <span>{isUrdu ? 'صلاحیات و اجازت نامے (Assigned Capabilities)' : 'Role Permissions & Access Control'}</span>
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-extrabold text-[var(--text-main)] flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-[var(--accent-blue)]" />
+            <span>{isUrdu ? 'مجاز اختیارات و اجازت نامے' : 'Active Authorized Capabilities'}</span>
+          </h3>
+          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full neu-inset-sm text-emerald-500 font-mono">
+            {isUrdu ? 'فعال اختیارات' : 'Active Permissions'}
+          </span>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {[
             {
               title: isUrdu ? 'ایکسل رپورٹ برآمد' : 'Excel Export',
-              allowed: currentUser.canExportExcel,
+              allowed: !!currentUser.canExportExcel,
               icon: FileSpreadsheet
             },
             {
               title: isUrdu ? 'پی ڈی ایف پرنٹ' : 'PDF Printing',
-              allowed: currentUser.canExportPdf,
+              allowed: !!currentUser.canExportPdf,
               icon: FileText
             },
             {
               title: isUrdu ? 'واٹس ایپ ڈسپیچ' : 'WhatsApp Dispatch',
-              allowed: currentUser.canSendWhatsApp,
+              allowed: !!currentUser.canSendWhatsApp,
               icon: MessageSquare
             },
             {
@@ -186,27 +190,25 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               allowed: isSuperAdmin,
               icon: Crown
             }
-          ].map((perm, idx) => {
-            const Icon = perm.icon;
-            return (
-              <div
-                key={idx}
-                className="neu-inset-sm rounded-2xl p-3.5 flex items-center justify-between gap-3 bg-[var(--bg-canvas)]"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="p-1.5 rounded-xl neu-raised text-[var(--text-secondary)]">
-                    <Icon className="w-4 h-4" />
+          ]
+            .filter((perm) => perm.allowed)
+            .map((perm, idx) => {
+              const Icon = perm.icon;
+              return (
+                <div
+                  key={idx}
+                  className="neu-inset-sm rounded-2xl p-3.5 flex items-center justify-between gap-3 bg-[var(--bg-canvas)]"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 rounded-xl neu-raised text-emerald-500">
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <span className="text-xs font-bold text-[var(--text-main)]">{perm.title}</span>
                   </div>
-                  <span className="text-xs font-bold text-[var(--text-main)]">{perm.title}</span>
-                </div>
-                {perm.allowed ? (
                   <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                ) : (
-                  <XCircle className="w-4 h-4 text-rose-400 shrink-0 opacity-60" />
-                )}
-              </div>
-            );
-          })}
+                </div>
+              );
+            })}
         </div>
       </div>
 
