@@ -1,77 +1,9 @@
 import { UserAccount, UserRole, UserApprovalStatus, WhatsAppRecipient } from '../types';
 import { saveSessionState, loadSessionState, setCookie, getCookie } from './sessionCache';
+import { DEFAULT_USERS, PREDEFINED_WHATSAPP_RECIPIENTS, SUPER_ADMIN_NOTIFICATION_EMAIL } from '../data/defaultUsers';
+import { saveUserToCloud, updateUserStatusInCloud } from '../lib/firebase';
 
-export const SUPER_ADMIN_NOTIFICATION_EMAIL = 'hassantareen001@gmail.com';
-
-export const DEFAULT_USERS: UserAccount[] = [
-  {
-    id: 'user-superadmin-lukilion',
-    username: 'Lukilion',
-    password: 'Lukilion@78612',
-    name: 'Lukilion (Super Admin)',
-    email: 'hassantareen001@gmail.com',
-    role: 'superadmin',
-    status: 'active',
-    canExportExcel: true,
-    canExportPdf: true,
-    canSendWhatsApp: true,
-    createdAt: '2026-09-10'
-  },
-  {
-    id: 'user-admin-default',
-    username: 'admin',
-    password: 'admin123',
-    name: 'Admin Manager',
-    email: 'admin@orderla.pk',
-    role: 'admin',
-    status: 'active',
-    canExportExcel: true,
-    canExportPdf: true,
-    canSendWhatsApp: true,
-    createdAt: '2026-09-10'
-  },
-  {
-    id: 'user-buyer-default',
-    username: 'buyer',
-    password: '',
-    name: 'Wholesale Buyer (خریدار)',
-    role: 'buyer',
-    status: 'active',
-    canExportExcel: false,
-    canExportPdf: false,
-    canSendWhatsApp: true,
-    createdAt: '2026-09-10'
-  },
-  {
-    id: 'user-auditor-default',
-    username: 'auditor',
-    password: 'audit123',
-    name: 'Wholesale Auditor (آڈیٹر)',
-    role: 'auditor',
-    status: 'active',
-    canExportExcel: true,
-    canExportPdf: true,
-    canSendWhatsApp: false,
-    createdAt: '2026-09-10'
-  }
-];
-
-export const PREDEFINED_WHATSAPP_RECIPIENTS: WhatsAppRecipient[] = [
-  {
-    id: 'recip-super-admin',
-    nameEn: 'Super Admin',
-    nameUrdu: 'سپر ایڈمن',
-    phone: '+923076220633',
-    role: 'Super Admin'
-  },
-  {
-    id: 'recip-admin',
-    nameEn: 'Admin',
-    nameUrdu: 'ایڈمن',
-    phone: '+923057851808',
-    role: 'Admin'
-  }
-];
+export { DEFAULT_USERS, PREDEFINED_WHATSAPP_RECIPIENTS, SUPER_ADMIN_NOTIFICATION_EMAIL };
 
 const USERS_STORAGE_KEY = 'orderla_users_accounts_v1';
 const CURRENT_USER_STORAGE_KEY = 'orderla_current_user_v1';
@@ -84,12 +16,30 @@ export function getStoredUsers(): UserAccount[] {
     const raw = localStorage.getItem(USERS_STORAGE_KEY) || getCookie(USERS_STORAGE_KEY);
     if (raw) {
       const parsed: UserAccount[] = JSON.parse(raw);
+      let modified = false;
+
       // Ensure Lukilion always exists
       const hasLukilion = parsed.some(
         (u) => u.username.toLowerCase() === 'lukilion'
       );
       if (!hasLukilion) {
         parsed.unshift(DEFAULT_USERS[0]);
+        modified = true;
+      }
+
+      // Ensure Ali (Buyer ali_007) exists
+      const hasAli = parsed.some(
+        (u) => u.username.toLowerCase() === 'ali_007'
+      );
+      if (!hasAli) {
+        const aliDefault = DEFAULT_USERS.find((u) => u.username.toLowerCase() === 'ali_007');
+        if (aliDefault) {
+          parsed.push(aliDefault);
+          modified = true;
+        }
+      }
+
+      if (modified) {
         saveStoredUsers(parsed);
       }
       return parsed;
@@ -108,6 +58,13 @@ export function getStoredUsers(): UserAccount[] {
  */
 export function saveStoredUsers(users: UserAccount[]): void {
   saveSessionState(USERS_STORAGE_KEY, users);
+  try {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('orderla_users_updated', { detail: users }));
+    }
+  } catch {
+    /* ignore */
+  }
 }
 
 export const AUTH_SESSION_FLAG = 'orderla_session_authenticated_v1';
@@ -329,6 +286,11 @@ export function registerUserAccount(data: {
   const updatedList = [...users, newUser];
   saveStoredUsers(updatedList);
 
+  // Sync new user registration directly to Firebase Cloud Firestore
+  saveUserToCloud(newUser).catch((err) => {
+    console.warn('[Firebase Auth] Failed to sync new registration to cloud:', err);
+  });
+
   const emailInfo = generateAdminApprovalEmail(newUser);
 
   return {
@@ -372,6 +334,17 @@ export function approveUserRegistration(
 
   saveStoredUsers(users);
 
+  // Sync approved status and authority tier to Firebase Cloud Firestore
+  updateUserStatusInCloud(userId, {
+    role: grantedRole,
+    status: 'active',
+    canExportExcel: permissions?.canExportExcel ?? isAuditorOrAbove,
+    canExportPdf: permissions?.canExportPdf ?? isAuditorOrAbove,
+    canSendWhatsApp: permissions?.canSendWhatsApp ?? true
+  }).catch((err) => {
+    console.warn('[Firebase Auth] Failed to sync approval to cloud:', err);
+  });
+
   // If current user is this user, refresh session
   const current = getCurrentUser();
   if (current && current.id === userId) {
@@ -402,6 +375,14 @@ export function rejectUserRegistration(
   };
 
   saveStoredUsers(users);
+
+  // Sync rejection to Firebase Cloud Firestore
+  updateUserStatusInCloud(userId, {
+    status: 'rejected'
+  }).catch((err) => {
+    console.warn('[Firebase Auth] Failed to sync rejection to cloud:', err);
+  });
+
   return { success: true };
 }
 
@@ -480,6 +461,12 @@ export function addNewUser(
 
   const updatedList = [...users, userAccount];
   saveStoredUsers(updatedList);
+
+  // Sync new user account directly to Firebase Cloud Firestore
+  saveUserToCloud(userAccount).catch((err) => {
+    console.warn('[Firebase Auth] Failed to sync new user to cloud:', err);
+  });
+
   return { success: true, user: userAccount };
 }
 
@@ -509,12 +496,102 @@ export function updateUserPermissions(
   });
   saveStoredUsers(updated);
 
+  // Sync updated permissions to Firebase Cloud Firestore
+  updateUserStatusInCloud(userId, permissions).catch((err) => {
+    console.warn('[Firebase Auth] Failed to sync updated permissions to cloud:', err);
+  });
+
   // If updating current user, refresh current user state too
   const current = getCurrentUser();
   if (current && current.id === userId) {
     const fresh = updated.find((u) => u.id === userId);
     if (fresh) setCurrentUser(fresh);
   }
+}
+
+/**
+ * Super Admin or Admin update any user details (username, password, name, role, permissions, status)
+ * Supports promoting to any role or demoting.
+ */
+export function updateUserDetails(
+  userId: string,
+  updates: {
+    name?: string;
+    username?: string;
+    password?: string;
+    role?: UserRole;
+    status?: UserApprovalStatus;
+    canExportExcel?: boolean;
+    canExportPdf?: boolean;
+    canSendWhatsApp?: boolean;
+    email?: string;
+    phone?: string;
+  }
+): { success: boolean; error?: string; user?: UserAccount } {
+  const users = getStoredUsers();
+  const targetIndex = users.findIndex((u) => u.id === userId);
+
+  if (targetIndex === -1) {
+    return { success: false, error: 'User not found / صارف نہیں ملا' };
+  }
+
+  const target = users[targetIndex];
+  const isLukilion = target.username.toLowerCase() === 'lukilion';
+
+  // Prevent changing Lukilion's role away from superadmin or deactivating
+  if (isLukilion) {
+    if (updates.role && updates.role !== 'superadmin') {
+      return { success: false, error: 'سپر ایڈمن (Lukilion) کا بنیادی رول تبدیل نہیں کیا جا سکتا' };
+    }
+    if (updates.status && updates.status !== 'active') {
+      return { success: false, error: 'سپر ایڈمن کو معطل یا غیر فعال نہیں کیا جا سکتا' };
+    }
+  }
+
+  // Validate username uniqueness if changed
+  if (updates.username && updates.username.trim().toLowerCase() !== target.username.toLowerCase()) {
+    const trimmedNewUsername = updates.username.trim();
+    if (!trimmedNewUsername) {
+      return { success: false, error: 'صارف نام خالی نہیں ہو سکتا / Username cannot be blank' };
+    }
+    const duplicate = users.some(
+      (u) => u.id !== userId && u.username.trim().toLowerCase() === trimmedNewUsername.toLowerCase()
+    );
+    if (duplicate) {
+      return { success: false, error: 'یہ صارف نام پہلے سے زیر استعمال ہے / Username already exists' };
+    }
+  }
+
+  // Build clean updated user object
+  const updatedUser: UserAccount = {
+    ...target,
+    name: updates.name !== undefined ? updates.name.trim() : target.name,
+    username: updates.username !== undefined ? updates.username.trim() : target.username,
+    password: updates.password !== undefined ? updates.password : target.password,
+    role: updates.role !== undefined ? updates.role : target.role,
+    status: updates.status !== undefined ? updates.status : target.status,
+    canExportExcel: updates.canExportExcel !== undefined ? updates.canExportExcel : target.canExportExcel,
+    canExportPdf: updates.canExportPdf !== undefined ? updates.canExportPdf : target.canExportPdf,
+    canSendWhatsApp: updates.canSendWhatsApp !== undefined ? updates.canSendWhatsApp : target.canSendWhatsApp,
+    email: updates.email !== undefined ? updates.email.trim() : target.email,
+    phone: updates.phone !== undefined ? updates.phone.trim() : target.phone
+  };
+
+  users[targetIndex] = updatedUser;
+  saveStoredUsers(users);
+
+  // Sync to Firebase Cloud Firestore
+  updateUserStatusInCloud(userId, updatedUser).catch((err) => {
+    console.warn('[Firebase Auth] Failed to sync user details update to cloud:', err);
+  });
+
+  // If current logged-in user is updated, update active session
+  const current = getCurrentUser();
+  if (current && current.id === userId) {
+    setCurrentUser(updatedUser);
+  }
+
+  return { success: true, user: updatedUser };
 }
 
 /**

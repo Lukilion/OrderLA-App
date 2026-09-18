@@ -27,6 +27,7 @@ import {
   User
 } from 'lucide-react';
 import { Language, Theme, PrimaryNavTab } from '../types';
+import { DEFAULT_MASTER_ITEMS } from '../data/masterItems';
 
 interface TopControlBarProps {
   theme: Theme;
@@ -440,7 +441,7 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
                           <Trash2 className="w-3.5 h-3.5 text-rose-500" />
                           <span>{isUrdu ? 'اصل لسٹ پر بحال کریں (Revoke)' : 'Revoke to Default'}</span>
                         </span>
-                        <span className="text-[10px] text-rose-500">94 items</span>
+                        <span className="text-[10px] text-rose-500">{DEFAULT_MASTER_ITEMS.length} items</span>
                       </button>
                     </div>
                   )}

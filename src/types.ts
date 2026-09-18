@@ -10,7 +10,7 @@ export interface WholesaleItem {
 
 export type UserRole = 'superadmin' | 'admin' | 'buyer' | 'auditor' | 'purchaser';
 
-export type UserApprovalStatus = 'active' | 'pending' | 'rejected';
+export type UserApprovalStatus = 'active' | 'pending' | 'rejected' | 'suspended';
 
 export interface UserAccount {
   id: string;

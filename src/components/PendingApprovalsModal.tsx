@@ -62,6 +62,9 @@ export const PendingApprovalsModal: React.FC<PendingApprovalsModalProps> = ({
     if (isOpen) {
       refreshList();
       setActionFeedback(null);
+      const handleSync = () => refreshList();
+      window.addEventListener('orderla_users_updated', handleSync);
+      return () => window.removeEventListener('orderla_users_updated', handleSync);
     }
   }, [isOpen]);
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { OrderLaLogo } from './OrderLaLogo';
 import { 
   Lock, 
@@ -85,6 +85,45 @@ export const AuthGatewayScreen: React.FC<AuthGatewayScreenProps> = ({
     user: UserAccount;
     mailtoUrl?: string;
   } | null>(null);
+
+  // Auto-listen for approval in real-time when waiting for admin approval
+  useEffect(() => {
+    if (!pendingWaitUser) return;
+
+    const checkStatus = () => {
+      const allUsers = getStoredUsers();
+      const freshUser = allUsers.find(
+        (u) =>
+          u.id === pendingWaitUser.id ||
+          u.username.trim().toLowerCase() === pendingWaitUser.username.trim().toLowerCase()
+      );
+
+      if (freshUser && freshUser.status === 'active') {
+        setWaitStatusMsg(
+          isUrdu
+            ? '🎉 مبارک ہو! ایڈمن کی جانب سے آپ کی رسائی منظور کر دی گئی ہے۔ سسٹم میں داخل ہو رہے ہیں...'
+            : '🎉 Approved! Your access has been granted by administrator. Entering system...'
+        );
+        setTimeout(() => {
+          setCurrentUser(freshUser);
+          onLoginSuccess(freshUser);
+        }, 900);
+      }
+    };
+
+    // Check immediately
+    checkStatus();
+
+    // Listen to custom window event triggered by cloud sync & polling
+    const handleUsersUpdated = () => checkStatus();
+    window.addEventListener('orderla_users_updated', handleUsersUpdated);
+    const interval = setInterval(checkStatus, 2500);
+
+    return () => {
+      window.removeEventListener('orderla_users_updated', handleUsersUpdated);
+      clearInterval(interval);
+    };
+  }, [pendingWaitUser, isUrdu, onLoginSuccess]);
 
   // Submit Login
   const handleLoginSubmit = (e: React.FormEvent) => {

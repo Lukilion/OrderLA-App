@@ -27,10 +27,11 @@ import { ProfileView } from './components/ProfileView';
 import { Toast } from './components/Toast';
 import { AuthGatewayScreen } from './components/AuthGatewayScreen';
 import { exportWholesaleExcel } from './utils/exportHelpers';
-import { getCurrentUser, hasExportPermission, getStoredUsers, setCurrentUser as persistCurrentUser, logoutUser, getPendingCount } from './utils/authManager';
+import { getCurrentUser, hasExportPermission, getStoredUsers, saveStoredUsers, setCurrentUser as persistCurrentUser, logoutUser, getPendingCount } from './utils/authManager';
+import { subscribeToCloudUsers, subscribeToCloudCatalog, fetchCloudCatalog } from './lib/firebase';
 import { addAuditHistoryEntry } from './utils/historyManager';
 import { generateLiveNotifications } from './utils/notificationsManager';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, RefreshCw } from 'lucide-react';
 
 export function App() {
   // Visual Theme State (Light / Dark)
@@ -65,6 +66,73 @@ export function App() {
     }
   }, [currentUser]);
 
+  // Cloud Firestore Real-Time Subscriptions for Multi-Device and Multi-User Sync
+  useEffect(() => {
+    // 1. Listen for user registrations, role grants, and approvals from cloud
+    const unsubUsers = subscribeToCloudUsers((cloudUsers) => {
+      saveStoredUsers(cloudUsers);
+      setNotificationsTick((prev) => prev + 1);
+
+      // If current user is logged in, refresh permissions in case Super Admin granted access
+      const current = getCurrentUser();
+      if (current) {
+        const fresh = cloudUsers.find((u) => u.id === current.id);
+        if (fresh && fresh.status === 'active') {
+          if (
+            fresh.role !== current.role ||
+            fresh.canExportExcel !== current.canExportExcel ||
+            fresh.canExportPdf !== current.canExportPdf ||
+            fresh.canSendWhatsApp !== current.canSendWhatsApp
+          ) {
+            persistCurrentUser(fresh);
+            setCurrentUserState(fresh);
+            setUserRole(fresh.role);
+          }
+        }
+      }
+    });
+
+    // 2. Listen for catalog items and rates from Cloud Firestore
+    const unsubCatalog = subscribeToCloudCatalog((cloudItems) => {
+      if (cloudItems && cloudItems.length > 0) {
+        setItems((currentLocalItems) => {
+          const demandMap = new Map<string, { stock: string; demand: number; status: string }>();
+          currentLocalItems.forEach((it) => {
+            if (it.name) {
+              demandMap.set(it.name.trim(), {
+                stock: it.stock || '',
+                demand: it.demand || 0,
+                status: it.status || 'اسٹاک دستیاب ہے'
+              });
+            }
+          });
+
+          const merged = cloudItems.map((cItem) => {
+            const local = demandMap.get(cItem.name.trim());
+            return {
+              ...cItem,
+              stock: local ? local.stock : (cItem.stock || ''),
+              demand: local ? local.demand : (cItem.demand || 0),
+              status: local ? local.status : (cItem.status || 'اسٹاک دستیاب ہے')
+            };
+          });
+
+          try {
+            localStorage.setItem('wholesale_demand_sheet_items_v3', JSON.stringify(merged));
+          } catch {
+            /* ignore */
+          }
+          return merged;
+        });
+      }
+    });
+
+    return () => {
+      unsubUsers();
+      unsubCatalog();
+    };
+  }, []);
+
   // Navigation State
   const [activeRoute, setActiveRoute] = useState<string>('demand-sheet');
   const [primaryTab, setPrimaryTab] = useState<PrimaryNavTab>('home');
@@ -89,13 +157,42 @@ export function App() {
     }
   }, [isSidebarCollapsed]);
 
-  // Master Items State (persisted with clean default empty stock/demand)
+  // Master Items State (persisted with clean default empty stock/demand and automatic synchronization)
   const [items, setItems] = useState<WholesaleItem[]>(() => {
     try {
       const stored = localStorage.getItem('wholesale_demand_sheet_items_v3');
       if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length === DEFAULT_MASTER_ITEMS.length) {
+        const parsed: WholesaleItem[] = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // If stored items is missing items (e.g. 64 instead of all 95), merge with DEFAULT_MASTER_ITEMS
+          const hasAllItems = parsed.length >= DEFAULT_MASTER_ITEMS.length;
+
+          if (!hasAllItems) {
+            // Merge defaults with existing user demands & stocks
+            const demandMap = new Map<string, { stock: string; demand: number; status: string }>();
+            parsed.forEach((p) => {
+              if (p.name) {
+                demandMap.set(p.name.trim(), { stock: p.stock || '', demand: p.demand || 0, status: p.status || 'اسٹاک دستیاب ہے' });
+              }
+            });
+
+            const merged: WholesaleItem[] = DEFAULT_MASTER_ITEMS.map((def) => {
+              const saved = demandMap.get(def.name.trim());
+              if (saved) {
+                return { ...def, stock: saved.stock, demand: saved.demand, status: saved.status };
+              }
+              return { ...def };
+            });
+
+            // Preserve any custom user-added items not in default list
+            const defaultNames = new Set(DEFAULT_MASTER_ITEMS.map((d) => d.name.trim()));
+            const customItems = parsed.filter((p) => p.name && !defaultNames.has(p.name.trim()));
+            const combined = [...merged, ...customItems];
+
+            localStorage.setItem('wholesale_demand_sheet_items_v3', JSON.stringify(combined));
+            return combined;
+          }
+
           return parsed;
         }
       }
@@ -125,6 +222,7 @@ export function App() {
 
   // Visibility of the complete items list (hidden by default to keep dashboard cool & empty)
   const [isListVisible, setIsListVisible] = useState<boolean>(false);
+  const [isRefreshingList, setIsRefreshingList] = useState<boolean>(false);
 
   // Role Authentication & Security Modals
   const [isRoleLoginOpen, setIsRoleLoginOpen] = useState<boolean>(false);
@@ -173,6 +271,67 @@ export function App() {
       setToastMessage((prev) => (prev === msg ? null : prev));
     }, 2800);
   }, []);
+
+  // Refresh list and rates directly from Cloud Firestore database
+  const handleRefreshListFromDatabase = useCallback(async (e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    if (isRefreshingList) return;
+
+    setIsRefreshingList(true);
+    try {
+      const cloudItems = await fetchCloudCatalog();
+      if (cloudItems && cloudItems.length > 0) {
+        setItems((currentLocalItems) => {
+          const demandMap = new Map<string, { stock: string; demand: number; status: string }>();
+          currentLocalItems.forEach((it) => {
+            if (it.name) {
+              demandMap.set(it.name.trim(), {
+                stock: it.stock || '',
+                demand: it.demand || 0,
+                status: it.status || 'اسٹاک دستیاب ہے'
+              });
+            }
+          });
+
+          const merged = cloudItems.map((cItem) => {
+            const local = demandMap.get(cItem.name.trim());
+            return {
+              ...cItem,
+              stock: local ? local.stock : (cItem.stock || ''),
+              demand: local ? local.demand : (cItem.demand || 0),
+              status: local ? local.status : (cItem.status || 'اسٹاک دستیاب ہے')
+            };
+          });
+
+          try {
+            localStorage.setItem('wholesale_demand_sheet_items_v3', JSON.stringify(merged));
+          } catch {
+            /* ignore */
+          }
+          return merged;
+        });
+
+        showToast(
+          language === 'ur'
+            ? `🔄 کلاؤڈ ڈیٹا بیس سے لائیو فہرست ریفریش ہو گئی (${cloudItems.length} اشیاء اور تازہ ریٹس)`
+            : `🔄 List refreshed from cloud database (${cloudItems.length} items & latest rates)`
+        );
+      }
+    } catch (err) {
+      console.error('[Database Refresh] Error fetching cloud catalog:', err);
+      showToast(
+        language === 'ur'
+          ? '⚠️ کلاؤڈ ڈیٹا بیس سے رابطہ نہیں ہو سکا، لوکل ڈیٹا فعال ہے'
+          : '⚠️ Cloud database unreachable, local cached data retained'
+      );
+    } finally {
+      setTimeout(() => {
+        setIsRefreshingList(false);
+      }, 500);
+    }
+  }, [isRefreshingList, language, showToast]);
 
   // Save to localStorage & push history state
   const commitItemsChange = useCallback(
@@ -790,13 +949,20 @@ export function App() {
                 <button
                   id="toggleItemsListBtn"
                   type="button"
-                  onClick={() => setIsListVisible((prev) => !prev)}
+                  onClick={() => {
+                    if (!isListVisible) {
+                      setIsListVisible(true);
+                      handleRefreshListFromDatabase();
+                    } else {
+                      setIsListVisible(false);
+                    }
+                  }}
                   className={`group inline-flex items-center gap-3 px-6 sm:px-8 py-3.5 rounded-2xl font-extrabold text-xs sm:text-sm cursor-pointer transition-all duration-200 shadow-md active:scale-95 ${
                     isListVisible
                       ? 'neu-raised-flat text-[var(--accent-blue)] hover:neu-inset-sunken'
                       : 'neu-btn-accent text-white hover:scale-[1.02]'
                   }`}
-                  title={isListVisible ? (language === 'ur' ? 'فہرست چھپائیں' : 'Hide the complete items list') : (language === 'ur' ? 'مکمل فہرست کھولیں' : 'Open the complete items list')}
+                  title={isListVisible ? (language === 'ur' ? 'فہرست چھپائیں' : 'Hide the complete items list') : (language === 'ur' ? 'ڈیٹا بیس سے لائیو فہرست کھولیں' : 'Open live list from database')}
                 >
                   <div className={`p-1 rounded-xl transition-transform duration-300 ${
                     isListVisible ? 'rotate-180 text-[var(--accent-blue)] neu-inset-small' : 'bg-white/20 text-white'
@@ -805,7 +971,9 @@ export function App() {
                   </div>
 
                   <span className="tracking-wide">
-                    {isListVisible
+                    {isRefreshingList
+                      ? (language === 'ur' ? 'ڈیٹا بیس سے ریفریش ہو رہا ہے...' : 'Refreshing from Database...')
+                      : isListVisible
                       ? (language === 'ur' ? 'فہرست بند کریں / Hide List' : 'Hide the List / فہرست بند کریں')
                       : (language === 'ur' ? 'فہرست کھولیں / Open the List' : 'Open the List / فہرست کھولیں')}
                   </span>
@@ -815,6 +983,38 @@ export function App() {
                   }`}>
                     {filteredAndSortedItems.length} {language === 'ur' ? 'آئٹمز' : 'Items'}
                   </span>
+
+                  {/* List Refreshing Arrow Icon Inside Button */}
+                  <div
+                    id="refreshListArrowBtn"
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!isListVisible) setIsListVisible(true);
+                      handleRefreshListFromDatabase(e);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        if (!isListVisible) setIsListVisible(true);
+                        handleRefreshListFromDatabase();
+                      }
+                    }}
+                    className={`p-1.5 rounded-xl transition-all duration-200 flex items-center justify-center cursor-pointer ${
+                      isListVisible
+                        ? 'neu-inset-small text-[var(--accent-blue)] hover:bg-blue-100/60 active:scale-90'
+                        : 'bg-white/20 hover:bg-white/30 text-white active:scale-90'
+                    }`}
+                    title={language === 'ur' ? 'ڈیٹا بیس سے لائیو فہرست ریفریش کریں / Refresh List from Database' : 'Refresh list from cloud database'}
+                  >
+                    <RefreshCw
+                      className={`w-4 h-4 transition-transform duration-300 ${
+                        isRefreshingList ? 'animate-spin' : 'group-hover:rotate-90'
+                      }`}
+                    />
+                  </div>
                 </button>
               </div>
 

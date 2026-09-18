@@ -20,13 +20,21 @@ import {
   Clock,
   UserCheck,
   UserX,
-  Sparkles
+  Sparkles,
+  Edit3,
+  Save,
+  Eye,
+  EyeOff,
+  UserCog,
+  ArrowUpRight,
+  ArrowDownRight
 } from 'lucide-react';
-import { UserAccount, UserRole, Language } from '../types';
+import { UserAccount, UserRole, UserApprovalStatus, Language } from '../types';
 import { 
   getStoredUsers, 
   addNewUser, 
   updateUserPermissions, 
+  updateUserDetails,
   deleteUser,
   approveUserRegistration,
   rejectUserRegistration,
@@ -85,11 +93,92 @@ export const SuperAdminConsoleModal: React.FC<SuperAdminConsoleModalProps> = ({
   const [formCanWhatsApp, setFormCanWhatsApp] = useState<boolean>(true);
   const [formStatusMsg, setFormStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Refresh users on modal open
+  // Edit User State (Super Admin / Admin full editing & promotion/demotion)
+  const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
+  const [editName, setEditName] = useState<string>('');
+  const [editUsername, setEditUsername] = useState<string>('');
+  const [editPassword, setEditPassword] = useState<string>('');
+  const [editRole, setEditRole] = useState<UserRole>('buyer');
+  const [editStatus, setEditStatus] = useState<UserApprovalStatus>('active');
+  const [editCanExcel, setEditCanExcel] = useState<boolean>(false);
+  const [editCanPdf, setEditCanPdf] = useState<boolean>(false);
+  const [editCanWhatsApp, setEditCanWhatsApp] = useState<boolean>(true);
+  const [editEmail, setEditEmail] = useState<string>('');
+  const [editPhone, setEditPhone] = useState<string>('');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [editStatusMsg, setEditStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleOpenEditUser = (u: UserAccount) => {
+    setEditingUser(u);
+    setEditName(u.name || '');
+    setEditUsername(u.username || '');
+    setEditPassword(u.password || '');
+    setEditRole(u.role || 'buyer');
+    setEditStatus(u.status || 'active');
+    setEditCanExcel(!!u.canExportExcel);
+    setEditCanPdf(!!u.canExportPdf);
+    setEditCanWhatsApp(!!u.canSendWhatsApp);
+    setEditEmail(u.email || '');
+    setEditPhone(u.phone || '');
+    setShowPassword(false);
+    setEditStatusMsg(null);
+  };
+
+  const handleCloseEditUser = () => {
+    setEditingUser(null);
+    setEditStatusMsg(null);
+  };
+
+  const handleSaveEditUser = () => {
+    if (!editingUser) return;
+    setEditStatusMsg(null);
+
+    if (!editUsername.trim()) {
+      setEditStatusMsg({
+        type: 'error',
+        text: isUrdu ? 'لاگ ان یوزر نیم درج کرنا لازمی ہے!' : 'Username is required!'
+      });
+      return;
+    }
+
+    const res = updateUserDetails(editingUser.id, {
+      name: editName.trim() || editUsername.trim(),
+      username: editUsername.trim(),
+      password: editPassword,
+      role: editRole,
+      status: editStatus,
+      canExportExcel: editCanExcel,
+      canExportPdf: editCanPdf,
+      canSendWhatsApp: editCanWhatsApp,
+      email: editEmail.trim(),
+      phone: editPhone.trim()
+    });
+
+    if (!res.success) {
+      setEditStatusMsg({
+        type: 'error',
+        text: res.error || 'Failed to update user'
+      });
+    } else {
+      setEditStatusMsg({
+        type: 'success',
+        text: isUrdu ? 'صارف کی تفصیلات اور رول کامیابی کے ساتھ محفوظ ہو گئے!' : 'User details and role successfully saved!'
+      });
+      refreshUsersList();
+      setTimeout(() => {
+        setEditingUser(null);
+      }, 900);
+    }
+  };
+
+  // Refresh users on modal open & listen for real-time cloud updates
   React.useEffect(() => {
     if (isOpen) {
       setUsers(getStoredUsers());
       setFormStatusMsg(null);
+      const handleSync = () => setUsers(getStoredUsers());
+      window.addEventListener('orderla_users_updated', handleSync);
+      return () => window.removeEventListener('orderla_users_updated', handleSync);
     }
   }, [isOpen]);
 
@@ -433,6 +522,17 @@ export const SuperAdminConsoleModal: React.FC<SuperAdminConsoleModalProps> = ({
                         <span>WhatsApp: {u.canSendWhatsApp ? 'مجاز (Yes)' : 'غیر مجاز (No)'}</span>
                       </button>
 
+                      {/* Edit User Details & Role Promotion/Demotion */}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditUser(u)}
+                        className="px-3 py-1.5 rounded-xl text-[11px] font-bold neu-btn text-[var(--accent-blue)] hover:text-blue-600 flex items-center gap-1.5 cursor-pointer"
+                        title={isUrdu ? 'صارف کی تفصیلات، پاس ورڈ اور عہدہ ایڈٹ کریں' : 'Edit user details, password & role'}
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>{isUrdu ? 'ترمیم / رول' : 'Edit / Role'}</span>
+                      </button>
+
                       {/* Delete User Button (Disabled for Lukilion) */}
                       {!isLukilion && (
                         <button
@@ -774,6 +874,352 @@ export const SuperAdminConsoleModal: React.FC<SuperAdminConsoleModalProps> = ({
             {isUrdu ? 'بند کریں' : 'Close'}
           </button>
         </div>
+
+        {/* EDIT USER DETAILS & ROLE PROMOTION/DEMOTION OVERLAY DIALOG */}
+        {editingUser && (
+          <div className="absolute inset-0 z-30 bg-black/60 backdrop-blur-md p-3 sm:p-5 flex items-center justify-center animate-in fade-in duration-200">
+            <div className="w-full max-w-xl neu-raised-lg rounded-3xl p-5 sm:p-6 text-right max-h-[92vh] flex flex-col justify-between overflow-hidden relative animate-in zoom-in-95 duration-150 border-2 border-[var(--accent-blue)]/20 shadow-2xl">
+              
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3.5 border-b border-black/5 dark:border-white/10 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl neu-inset-sm flex items-center justify-center text-[var(--accent-blue)]">
+                    <UserCog className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-[var(--text-main)] urdu-title">
+                      {isUrdu ? 'صارف کی تفصیلات اور رول میں ترمیم کریں' : 'Edit User Credentials & Role'}
+                    </h3>
+                    <p className="text-[11px] text-[var(--text-secondary)]">
+                      {isUrdu
+                        ? `صارف: ${editingUser.username} (${editingUser.name})`
+                        : `User: ${editingUser.username} (${editingUser.name})`}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleCloseEditUser}
+                  className="w-8 h-8 rounded-xl neu-btn flex items-center justify-center text-[var(--text-secondary)] hover:text-rose-500 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Form Content */}
+              <div className="flex-1 py-3.5 overflow-y-auto space-y-4 pr-1 text-xs">
+                {editStatusMsg && (
+                  <div
+                    className={`p-3 rounded-2xl text-xs font-bold flex items-center gap-2 animate-in fade-in ${
+                      editStatusMsg.type === 'success'
+                        ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-600'
+                        : 'bg-rose-500/15 border border-rose-500/30 text-rose-500'
+                    }`}
+                  >
+                    {editStatusMsg.type === 'success' ? (
+                      <Check className="w-4 h-4 shrink-0" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                    )}
+                    <span>{editStatusMsg.text}</span>
+                  </div>
+                )}
+
+                {/* Name & Username Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-[var(--text-secondary)] mb-1">
+                      {isUrdu ? 'پورا نام (Full Display Name):' : 'Full Display Name:'}
+                    </label>
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="w-full py-2.5 px-3.5 rounded-2xl neu-input text-xs font-bold text-[var(--text-main)]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-[var(--text-secondary)] mb-1">
+                      {isUrdu ? 'لاگ ان یوزر نیم (Username):' : 'Login Username:'}
+                    </label>
+                    <input
+                      type="text"
+                      disabled={editingUser.username.toLowerCase() === 'lukilion'}
+                      value={editUsername}
+                      onChange={(e) => setEditUsername(e.target.value)}
+                      className={`w-full py-2.5 px-3.5 rounded-2xl neu-input text-xs font-mono font-bold text-[var(--text-main)] ${
+                        editingUser.username.toLowerCase() === 'lukilion' ? 'opacity-60 cursor-not-allowed' : ''
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                {/* Password field with Eye toggle */}
+                <div>
+                  <label className="block font-bold text-[var(--text-secondary)] mb-1">
+                    {isUrdu ? 'لاگ ان پاس ورڈ (Password):' : 'Login Password:'}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={editPassword}
+                      onChange={(e) => setEditPassword(e.target.value)}
+                      placeholder={isUrdu ? 'پاس ورڈ درج کریں' : 'Enter password'}
+                      className="w-full py-2.5 px-3.5 pl-10 rounded-2xl neu-input text-xs font-mono font-bold text-[var(--text-main)]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer"
+                      title={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-[var(--text-secondary)] mt-1">
+                    {isUrdu
+                      ? 'خریداروں کے لیے پاس ورڈ اختیاری ہے، ایڈمن اور آڈیٹر کے لیے پاس ورڈ لازمی ہے۔'
+                      : 'Password is optional for buyers, required for admin & auditor.'}
+                  </p>
+                </div>
+
+                {/* Role Promotion / Demotion Selector */}
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between">
+                    <label className="block font-extrabold text-[var(--text-main)]">
+                      {isUrdu ? 'عہدہ / رول (ترقی و تنزلی):' : 'Role & Hierarchy (Promote / Demote):'}
+                    </label>
+
+                    {/* Promotion / Demotion Status Pill */}
+                    {editingUser.role !== editRole && (
+                      <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-500/15 text-[var(--accent-blue)] border border-blue-500/30 flex items-center gap-1 animate-pulse">
+                        <Sparkles className="w-3 h-3" />
+                        <span>
+                          {isUrdu
+                            ? `رول تبدیل: ${editingUser.role.toUpperCase()} ➔ ${editRole.toUpperCase()}`
+                            : `Role Change: ${editingUser.role.toUpperCase()} ➔ ${editRole.toUpperCase()}`}
+                        </span>
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {/* Superadmin */}
+                    <button
+                      type="button"
+                      disabled={!isSuperAdmin && editingUser.role !== 'superadmin'}
+                      onClick={() => setEditRole('superadmin')}
+                      className={`p-2.5 rounded-2xl font-bold flex flex-col items-center gap-1.5 transition-all text-center cursor-pointer ${
+                        editRole === 'superadmin'
+                          ? 'neu-btn active text-amber-500 border-2 border-amber-500/40'
+                          : 'neu-btn text-[var(--text-secondary)]'
+                      } ${!isSuperAdmin ? 'opacity-40 cursor-not-allowed' : ''}`}
+                    >
+                      <Crown className="w-4 h-4 text-amber-500" />
+                      <span className="text-[11px]">{isUrdu ? 'سپر ایڈمن' : 'Super Admin'}</span>
+                      <span className="text-[9px] opacity-75">{isUrdu ? 'لیول 4' : 'Level 4'}</span>
+                    </button>
+
+                    {/* Admin */}
+                    <button
+                      type="button"
+                      disabled={editingUser.username.toLowerCase() === 'lukilion'}
+                      onClick={() => setEditRole('admin')}
+                      className={`p-2.5 rounded-2xl font-bold flex flex-col items-center gap-1.5 transition-all text-center cursor-pointer ${
+                        editRole === 'admin'
+                          ? 'neu-btn active text-[var(--accent-blue)] border-2 border-blue-500/40'
+                          : 'neu-btn text-[var(--text-secondary)]'
+                      } ${editingUser.username.toLowerCase() === 'lukilion' ? 'opacity-40 cursor-not-allowed' : ''}`}
+                    >
+                      <ShieldCheck className="w-4 h-4 text-[var(--accent-blue)]" />
+                      <span className="text-[11px]">{isUrdu ? 'ایڈمن' : 'Admin'}</span>
+                      <span className="text-[9px] opacity-75">{isUrdu ? 'لیول 3' : 'Level 3'}</span>
+                    </button>
+
+                    {/* Auditor */}
+                    <button
+                      type="button"
+                      disabled={editingUser.username.toLowerCase() === 'lukilion'}
+                      onClick={() => setEditRole('auditor')}
+                      className={`p-2.5 rounded-2xl font-bold flex flex-col items-center gap-1.5 transition-all text-center cursor-pointer ${
+                        editRole === 'auditor'
+                          ? 'neu-btn active text-purple-600 border-2 border-purple-500/40'
+                          : 'neu-btn text-[var(--text-secondary)]'
+                      } ${editingUser.username.toLowerCase() === 'lukilion' ? 'opacity-40 cursor-not-allowed' : ''}`}
+                    >
+                      <FileSpreadsheet className="w-4 h-4 text-purple-600" />
+                      <span className="text-[11px]">{isUrdu ? 'آڈیٹر' : 'Auditor'}</span>
+                      <span className="text-[9px] opacity-75">{isUrdu ? 'لیول 2' : 'Level 2'}</span>
+                    </button>
+
+                    {/* Buyer */}
+                    <button
+                      type="button"
+                      disabled={editingUser.username.toLowerCase() === 'lukilion'}
+                      onClick={() => setEditRole('buyer')}
+                      className={`p-2.5 rounded-2xl font-bold flex flex-col items-center gap-1.5 transition-all text-center cursor-pointer ${
+                        editRole === 'buyer'
+                          ? 'neu-btn active text-emerald-600 border-2 border-emerald-500/40'
+                          : 'neu-btn text-[var(--text-secondary)]'
+                      } ${editingUser.username.toLowerCase() === 'lukilion' ? 'opacity-40 cursor-not-allowed' : ''}`}
+                    >
+                      <Users className="w-4 h-4 text-emerald-600" />
+                      <span className="text-[11px]">{isUrdu ? 'خریدار' : 'Buyer'}</span>
+                      <span className="text-[9px] opacity-75">{isUrdu ? 'لیول 1' : 'Level 1'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Account Approval Status */}
+                <div>
+                  <label className="block font-extrabold text-[var(--text-main)] mb-1.5">
+                    {isUrdu ? 'اکاؤنٹ اسٹیٹس (Account Status):' : 'Account Status:'}
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      disabled={editingUser.username.toLowerCase() === 'lukilion'}
+                      onClick={() => setEditStatus('active')}
+                      className={`py-2 px-3 rounded-xl font-bold text-center transition-all cursor-pointer ${
+                        editStatus === 'active'
+                          ? 'neu-btn active text-emerald-600 border border-emerald-500/30'
+                          : 'neu-btn text-[var(--text-secondary)]'
+                      }`}
+                    >
+                      {isUrdu ? 'فعال (Active)' : 'Active'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={editingUser.username.toLowerCase() === 'lukilion'}
+                      onClick={() => setEditStatus('pending')}
+                      className={`py-2 px-3 rounded-xl font-bold text-center transition-all cursor-pointer ${
+                        editStatus === 'pending'
+                          ? 'neu-btn active text-amber-500 border border-amber-500/30'
+                          : 'neu-btn text-[var(--text-secondary)]'
+                      }`}
+                    >
+                      {isUrdu ? 'زیرِ التواء (Pending)' : 'Pending'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={editingUser.username.toLowerCase() === 'lukilion'}
+                      onClick={() => setEditStatus('suspended')}
+                      className={`py-2 px-3 rounded-xl font-bold text-center transition-all cursor-pointer ${
+                        editStatus === 'suspended'
+                          ? 'neu-btn active text-rose-500 border border-rose-500/30'
+                          : 'neu-btn text-[var(--text-secondary)]'
+                      }`}
+                    >
+                      {isUrdu ? 'معطل (Suspended)' : 'Suspended'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Export & Action Permissions */}
+                <div className="space-y-2 pt-1">
+                  <label className="block font-extrabold text-[var(--text-main)]">
+                    {isUrdu ? 'ایکسپورٹ و مواصلاتی اجازتیں (Export Permissions):' : 'Export & Redirection Authorities:'}
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      disabled={editingUser.username.toLowerCase() === 'lukilion'}
+                      onClick={() => setEditCanExcel(!editCanExcel)}
+                      className={`p-2.5 rounded-xl font-bold transition-all flex items-center justify-between cursor-pointer ${
+                        editCanExcel
+                          ? 'neu-btn active text-emerald-600'
+                          : 'neu-btn text-[var(--text-secondary)]'
+                      }`}
+                    >
+                      <span>Excel Export</span>
+                      <span className="text-[10px] font-mono">{editCanExcel ? 'ON' : 'OFF'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={editingUser.username.toLowerCase() === 'lukilion'}
+                      onClick={() => setEditCanPdf(!editCanPdf)}
+                      className={`p-2.5 rounded-xl font-bold transition-all flex items-center justify-between cursor-pointer ${
+                        editCanPdf
+                          ? 'neu-btn active text-indigo-600'
+                          : 'neu-btn text-[var(--text-secondary)]'
+                      }`}
+                    >
+                      <span>PDF / Print</span>
+                      <span className="text-[10px] font-mono">{editCanPdf ? 'ON' : 'OFF'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={editingUser.username.toLowerCase() === 'lukilion'}
+                      onClick={() => setEditCanWhatsApp(!editCanWhatsApp)}
+                      className={`p-2.5 rounded-xl font-bold transition-all flex items-center justify-between cursor-pointer ${
+                        editCanWhatsApp
+                          ? 'neu-btn active text-emerald-600'
+                          : 'neu-btn text-[var(--text-secondary)]'
+                      }`}
+                    >
+                      <span>WhatsApp</span>
+                      <span className="text-[10px] font-mono">{editCanWhatsApp ? 'ON' : 'OFF'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Optional Contact Fields */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block font-bold text-[var(--text-secondary)] mb-1">
+                      {isUrdu ? 'ای میل (Email):' : 'Email Address:'}
+                    </label>
+                    <input
+                      type="email"
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      placeholder="e.g. user@orderla.pk"
+                      className="w-full py-2.5 px-3.5 rounded-2xl neu-input text-xs font-bold text-[var(--text-main)]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-[var(--text-secondary)] mb-1">
+                      {isUrdu ? 'فون / واٹس ایپ (Phone):' : 'Phone / WhatsApp:'}
+                    </label>
+                    <input
+                      type="text"
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      placeholder="e.g. +923001234567"
+                      className="w-full py-2.5 px-3.5 rounded-2xl neu-input text-xs font-mono font-bold text-[var(--text-main)]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer Controls */}
+              <div className="pt-3 border-t border-black/5 dark:border-white/10 flex items-center justify-between gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleCloseEditUser}
+                  className="py-2.5 px-5 rounded-2xl neu-btn text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-main)] cursor-pointer"
+                >
+                  {isUrdu ? 'منسوخ کریں' : 'Cancel'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSaveEditUser}
+                  className="py-2.5 px-6 rounded-2xl neu-btn-accent text-xs sm:text-sm font-bold flex items-center gap-2 cursor-pointer shadow-md"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{isUrdu ? 'تبدیلیاں محفوظ کریں' : 'Save User Changes'}</span>
+                </button>
+              </div>
+
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

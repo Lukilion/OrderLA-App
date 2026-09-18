@@ -1,0 +1,51 @@
+{
+  "entities": {
+    "UserAccount": {
+      "title": "UserAccount",
+      "description": "User account and permission profile in OrderLa Wholesale BOS",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique user identifier" },
+        "username": { "type": "string", "description": "Login username" },
+        "password": { "type": "string", "description": "Account password" },
+        "name": { "type": "string", "description": "Full name of the user" },
+        "email": { "type": "string", "description": "Contact email address" },
+        "phone": { "type": "string", "description": "Contact phone or WhatsApp" },
+        "role": { "type": "string", "description": "Assigned access role", "enum": ["superadmin", "admin", "buyer", "auditor", "purchaser"] },
+        "requestedRole": { "type": "string", "description": "Role requested upon registration" },
+        "status": { "type": "string", "description": "Account approval status", "enum": ["pending", "active", "rejected"] },
+        "canExportExcel": { "type": "boolean", "description": "Excel spreadsheet export capability" },
+        "canExportPdf": { "type": "boolean", "description": "PDF invoice export capability" },
+        "canSendWhatsApp": { "type": "boolean", "description": "WhatsApp dispatch capability" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" },
+        "notes": { "type": "string", "description": "Applicant shop or market notes" }
+      },
+      "required": ["id", "username", "name", "role", "status"]
+    },
+    "WholesaleItem": {
+      "title": "WholesaleItem",
+      "description": "Wholesale inventory product with live rate and demand",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number", "description": "Unique catalog number" },
+        "name": { "type": "string", "description": "Urdu and English product name" },
+        "cat": { "type": "string", "description": "Wholesale market or vendor category" },
+        "rate": { "type": "number", "description": "Base rate in PKR" },
+        "stock": { "type": "string", "description": "Current stock count" },
+        "demand": { "type": "number", "description": "Demanded purchase quantity" },
+        "status": { "type": "string", "description": "Stock status indicator" }
+      },
+      "required": ["id", "name", "cat", "rate", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserAccount",
+      "description": "User profiles, pending registrations, and access permissions"
+    },
+    "/catalog/{itemId}": {
+      "schema": "WholesaleItem",
+      "description": "Master wholesale catalog items with real-time rate updates"
+    }
+  }
+}

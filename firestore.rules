@@ -1,0 +1,19 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // User registrations, approval statuses, and accounts
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+
+    // Wholesale catalog items and live rate synchronizations
+    match /catalog/{itemId} {
+      allow read, write: if true;
+    }
+
+    // Connectivity verification probe
+    match /test/{docId} {
+      allow read, write: if true;
+    }
+  }
+}
