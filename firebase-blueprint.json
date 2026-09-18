@@ -46,6 +46,14 @@
     "/catalog/{itemId}": {
       "schema": "WholesaleItem",
       "description": "Master wholesale catalog items with real-time rate updates"
+    },
+    "/saved_orders/{orderId}": {
+      "schema": "SavedOrder",
+      "description": "Cross-device saved orders, drafts, and dispatch archives"
+    },
+    "/audit_history/{entryId}": {
+      "schema": "AuditHistoryEntry",
+      "description": "Enterprise audit log tracking user changes, rate modifications, and operations"
     }
   }
 }
