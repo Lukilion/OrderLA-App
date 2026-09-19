@@ -111,14 +111,18 @@ export function App() {
             const local = demandMap.get(cItem.name.trim());
             return {
               ...cItem,
-              stock: local ? local.stock : (cItem.stock || ''),
-              demand: local ? local.demand : (cItem.demand || 0),
-              status: local ? local.status : (cItem.status || 'اسٹاک دستیاب ہے')
+              stock: local ? local.stock : '',
+              demand: local ? local.demand : 0,
+              status: local ? local.status : 'اسٹاک دستیاب ہے'
             };
           });
 
           try {
             localStorage.setItem('wholesale_demand_sheet_items_v3', JSON.stringify(merged));
+            const cur = getCurrentUser();
+            if (cur) {
+              localStorage.setItem(`wholesale_demand_sheet_user_${cur.id}`, JSON.stringify(merged));
+            }
           } catch {
             /* ignore */
           }
@@ -177,18 +181,35 @@ export function App() {
     }
   }, [isSidebarCollapsed]);
 
-  // Master Items State (persisted with clean default empty stock/demand and automatic synchronization)
+  // Master Items State (persisted per user draft with clean default empty stock/demand)
   const [items, setItems] = useState<WholesaleItem[]>(() => {
     try {
-      const stored = localStorage.getItem('wholesale_demand_sheet_items_v3');
+      const activeUser = getCurrentUser();
+      const userKey = activeUser ? `wholesale_demand_sheet_user_${activeUser.id}` : null;
+      const stored = (userKey && localStorage.getItem(userKey)) || localStorage.getItem('wholesale_demand_sheet_items_v3');
       if (stored) {
         const parsed: WholesaleItem[] = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // If stored items is missing items (e.g. 64 instead of all 95), merge with DEFAULT_MASTER_ITEMS
-          const hasAllItems = parsed.length >= DEFAULT_MASTER_ITEMS.length;
+          // Detect and purge old hardcoded demo values (e.g. item 1 has stock "42" or item 3 has demand 24)
+          const hasStaleDemoData = parsed.some(
+            (p) => (p.id === 1 && p.stock === '42') || (p.id === 3 && p.demand === 24) || (p.id === 21 && p.demand === 15)
+          );
+          if (hasStaleDemoData) {
+            console.log('[OrderLa] Detected legacy demo data cache; resetting to fresh items.');
+            const fresh = DEFAULT_MASTER_ITEMS.map((def) => ({
+              ...def,
+              stock: '',
+              demand: 0,
+              status: 'اسٹاک دستیاب ہے'
+            }));
+            localStorage.setItem('wholesale_demand_sheet_items_v3', JSON.stringify(fresh));
+            if (userKey) localStorage.setItem(userKey, JSON.stringify(fresh));
+            return fresh;
+          }
 
+          // If stored items is missing items, merge with clean DEFAULT_MASTER_ITEMS
+          const hasAllItems = parsed.length >= DEFAULT_MASTER_ITEMS.length;
           if (!hasAllItems) {
-            // Merge defaults with existing user demands & stocks
             const demandMap = new Map<string, { stock: string; demand: number; status: string }>();
             parsed.forEach((p) => {
               if (p.name) {
@@ -198,18 +219,20 @@ export function App() {
 
             const merged: WholesaleItem[] = DEFAULT_MASTER_ITEMS.map((def) => {
               const saved = demandMap.get(def.name.trim());
-              if (saved) {
-                return { ...def, stock: saved.stock, demand: saved.demand, status: saved.status };
-              }
-              return { ...def };
+              return {
+                ...def,
+                stock: saved ? saved.stock : '',
+                demand: saved ? saved.demand : 0,
+                status: saved ? saved.status : 'اسٹاک دستیاب ہے'
+              };
             });
 
-            // Preserve any custom user-added items not in default list
             const defaultNames = new Set(DEFAULT_MASTER_ITEMS.map((d) => d.name.trim()));
             const customItems = parsed.filter((p) => p.name && !defaultNames.has(p.name.trim()));
             const combined = [...merged, ...customItems];
 
             localStorage.setItem('wholesale_demand_sheet_items_v3', JSON.stringify(combined));
+            if (userKey) localStorage.setItem(userKey, JSON.stringify(combined));
             return combined;
           }
 
@@ -219,7 +242,12 @@ export function App() {
     } catch {
       /* ignore fallback */
     }
-    return JSON.parse(JSON.stringify(DEFAULT_MASTER_ITEMS));
+    return DEFAULT_MASTER_ITEMS.map((def) => ({
+      ...def,
+      stock: '',
+      demand: 0,
+      status: 'اسٹاک دستیاب ہے'
+    }));
   });
 
   // History State for Undo / Redo
@@ -359,6 +387,9 @@ export function App() {
       setItems(newItems);
       try {
         localStorage.setItem('wholesale_demand_sheet_items_v3', JSON.stringify(newItems));
+        if (currentUser) {
+          localStorage.setItem(`wholesale_demand_sheet_user_${currentUser.id}`, JSON.stringify(newItems));
+        }
       } catch (err) {
         console.error('LocalStorage save error', err);
       }
@@ -373,7 +404,7 @@ export function App() {
         setHistoryIndex((prev) => Math.min(prev + 1, 29));
       }
     },
-    [historyIndex]
+    [historyIndex, currentUser]
   );
 
   // Undo / Redo handlers
@@ -546,27 +577,33 @@ export function App() {
 
   // Reset to initial master items
   const handleConfirmReset = () => {
-    commitItemsChange(JSON.parse(JSON.stringify(DEFAULT_MASTER_ITEMS)));
+    const fresh = DEFAULT_MASTER_ITEMS.map((d) => ({
+      ...d,
+      stock: '',
+      demand: 0,
+      status: 'اسٹاک دستیاب ہے'
+    }));
+    commitItemsChange(fresh);
     showToast(
       language === 'ur'
-        ? 'تمام ریکارڈز ابتدائی حالت پر بحال کر دیے گئے ہیں!'
-        : 'Database reset to default wholesale master data!'
+        ? 'تمام اشیاء تازہ ماسٹر کیٹلاگ پر بحال کر دی گئی ہیں (Fresh State)!'
+        : 'Catalog reset to clean fresh wholesale master data!'
     );
   };
 
-  // Reset stock, demand, status to zero placeholders
+  // Reset stock, demand, status to fresh clean zero placeholders
   const handleResetToZeroPlaceholders = () => {
     const cleared = items.map((item) => ({
       ...item,
       stock: '',
       demand: 0,
-      status: ''
+      status: 'اسٹاک دستیاب ہے'
     }));
     commitItemsChange(cleared);
     showToast(
       language === 'ur'
-        ? 'اسٹاک، ڈیمانڈ اور کیفیت کامیابی سے صفر (0) کر دی گئیں!'
-        : 'Stock, demand & status cleared to zero placeholders!'
+        ? 'نیا آرڈر شروع! تمام اشیاء کی ڈیمانڈ و اسٹاک صفر اور تازہ حالت پر ہو گئے۔'
+        : 'Fresh order started! All item demands and stock reset to 0 in fresh status.'
     );
   };
 
@@ -732,16 +769,93 @@ export function App() {
     persistCurrentUser(authenticatedUser);
     setCurrentUserState(authenticatedUser);
     setUserRole(authenticatedUser.role);
-    showToast(
-      language === 'ur'
-        ? `خوش آمدید ${authenticatedUser.name}! لاگ ان کامیاب۔`
-        : `Welcome ${authenticatedUser.name}! Authentication successful.`
-    );
+
+    // Check if this user already has an existing working draft
+    const userKey = `wholesale_demand_sheet_user_${authenticatedUser.id}`;
+    let loadedItems: WholesaleItem[] | null = null;
+    try {
+      const stored = localStorage.getItem(userKey);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const hasStaleDemoData = parsed.some(
+            (p) => (p.id === 1 && p.stock === '42') || (p.id === 3 && p.demand === 24)
+          );
+          if (!hasStaleDemoData) {
+            loadedItems = parsed;
+          }
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+
+    if (loadedItems) {
+      setItems(loadedItems);
+      setHistoryStack([JSON.stringify(loadedItems)]);
+      setHistoryIndex(0);
+      try {
+        localStorage.setItem('wholesale_demand_sheet_items_v3', JSON.stringify(loadedItems));
+      } catch {
+        /* ignore */
+      }
+      showToast(
+        language === 'ur'
+          ? `خوش آمدید ${authenticatedUser.name}! آپ کا محفوظ شدہ ورکنگ ڈرافٹ لوڈ کر دیا گیا۔`
+          : `Welcome ${authenticatedUser.name}! Your saved working draft loaded.`
+      );
+    } else {
+      // Brand new user entering the system: Show fresh status of items!
+      const fresh = DEFAULT_MASTER_ITEMS.map((d) => ({
+        ...d,
+        stock: '',
+        demand: 0,
+        status: 'اسٹاک دستیاب ہے'
+      }));
+      setItems(fresh);
+      setHistoryStack([JSON.stringify(fresh)]);
+      setHistoryIndex(0);
+      try {
+        localStorage.setItem('wholesale_demand_sheet_items_v3', JSON.stringify(fresh));
+        localStorage.setItem(userKey, JSON.stringify(fresh));
+      } catch {
+        /* ignore */
+      }
+      showToast(
+        language === 'ur'
+          ? `خوش آمدید ${authenticatedUser.name}! تمام اشیاء تازہ (Fresh) حالت میں تیار ہیں۔`
+          : `Welcome ${authenticatedUser.name}! All items ready in fresh status.`
+      );
+    }
   };
 
   const handleLogout = () => {
+    if (currentUser) {
+      try {
+        localStorage.setItem(`wholesale_demand_sheet_user_${currentUser.id}`, JSON.stringify(items));
+      } catch {
+        /* ignore */
+      }
+    }
     logoutUser();
     setCurrentUserState(null);
+
+    // Reset in-memory items to 100% fresh for the next user
+    const fresh = DEFAULT_MASTER_ITEMS.map((d) => ({
+      ...d,
+      stock: '',
+      demand: 0,
+      status: 'اسٹاک دستیاب ہے'
+    }));
+    setItems(fresh);
+    setHistoryStack([JSON.stringify(fresh)]);
+    setHistoryIndex(0);
+    try {
+      localStorage.setItem('wholesale_demand_sheet_items_v3', JSON.stringify(fresh));
+    } catch {
+      /* ignore */
+    }
+
     showToast(
       language === 'ur'
         ? 'آپ کامیابی سے لاگ آؤٹ ہو چکے ہیں۔'

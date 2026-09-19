@@ -1,0 +1,6 @@
+{
+	"appId": "com.orderla.app",
+	"appName": "OrderLA",
+	"webDir": "dist",
+	"bundledWebRuntime": false
+}

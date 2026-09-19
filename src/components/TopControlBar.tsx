@@ -411,37 +411,36 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
                         <Check className="w-3 h-3 text-emerald-500" />
                       </button>
 
-                      {/* Destructive actions: Disappear for Buyers, appear automatically for Admin/Superadmin */}
-                      {showDestructiveEdits && (
-                        <>
-                          <button
-                            onClick={() => {
-                              onResetToZeroPlaceholders();
-                              setIsActionsOpen(false);
-                            }}
-                            className="w-full text-right rtl:text-right px-3 py-1.5 rounded-xl neu-btn text-amber-600 dark:text-amber-400 flex items-center justify-between cursor-pointer hover:text-amber-500"
-                          >
-                            <span className="flex items-center gap-2">
-                              <Eraser className="w-3.5 h-3.5 text-amber-500" />
-                              <span>{isUrdu ? 'اسٹاک، ڈیمانڈ و کیفیت صفر کریں' : 'Reset Stock, Demand & Status (0)'}</span>
-                            </span>
-                            <span className="text-[10px] neu-inset-sm px-1.5 py-0.5 rounded-full text-amber-500 font-mono font-bold">0</span>
-                          </button>
+                      {/* Start Fresh Order / Clear Demands: Accessible to ALL roles */}
+                      <button
+                        onClick={() => {
+                          onResetToZeroPlaceholders();
+                          setIsActionsOpen(false);
+                        }}
+                        className="w-full text-right rtl:text-right px-3 py-1.5 rounded-xl neu-btn text-amber-600 dark:text-amber-400 flex items-center justify-between cursor-pointer hover:text-amber-500"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Eraser className="w-3.5 h-3.5 text-amber-500" />
+                          <span>{isUrdu ? 'نیا آرڈر / ڈیمانڈ و اسٹاک صفر کریں' : 'Start Fresh Order (Clear to 0)'}</span>
+                        </span>
+                        <span className="text-[10px] neu-inset-sm px-1.5 py-0.5 rounded-full text-amber-500 font-mono font-bold">0</span>
+                      </button>
 
-                          <button
-                            onClick={() => {
-                              onPromptRevoke();
-                              setIsActionsOpen(false);
-                            }}
-                            className="w-full text-right rtl:text-right px-3 py-1.5 rounded-xl neu-btn text-rose-500 flex items-center justify-between cursor-pointer"
-                          >
-                            <span className="flex items-center gap-2">
-                              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                              <span>{isUrdu ? 'اصل لسٹ پر بحال کریں (Revoke)' : 'Revoke to Default'}</span>
-                            </span>
-                            <span className="text-[10px] text-rose-500">{DEFAULT_MASTER_ITEMS.length} items</span>
-                          </button>
-                        </>
+                      {/* Master Catalog Revoke: For Admin/Superadmin */}
+                      {showDestructiveEdits && (
+                        <button
+                          onClick={() => {
+                            onPromptRevoke();
+                            setIsActionsOpen(false);
+                          }}
+                          className="w-full text-right rtl:text-right px-3 py-1.5 rounded-xl neu-btn text-rose-500 flex items-center justify-between cursor-pointer"
+                        >
+                          <span className="flex items-center gap-2">
+                            <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                            <span>{isUrdu ? 'اصل ماسٹر کیٹلاگ پر بحال کریں (Revoke)' : 'Revoke to Master Catalog'}</span>
+                          </span>
+                          <span className="text-[10px] text-rose-500">{DEFAULT_MASTER_ITEMS.length} items</span>
+                        </button>
                       )}
                     </div>
                   )}
