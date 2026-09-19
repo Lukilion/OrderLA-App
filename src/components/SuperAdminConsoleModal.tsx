@@ -27,9 +27,13 @@ import {
   EyeOff,
   UserCog,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  Radio,
+  DownloadCloud,
+  CheckCircle2,
+  Layers
 } from 'lucide-react';
-import { UserAccount, UserRole, UserApprovalStatus, Language } from '../types';
+import { UserAccount, UserRole, UserApprovalStatus, Language, AppUpdateRelease } from '../types';
 import { 
   getStoredUsers, 
   addNewUser, 
@@ -40,6 +44,8 @@ import {
   rejectUserRegistration,
   SUPER_ADMIN_NOTIFICATION_EMAIL
 } from '../utils/authManager';
+import { broadcastAppUpdate, fetchLatestAppUpdate } from '../lib/firebase';
+import { APP_CLIENT_VERSION } from '../utils/updateManager';
 
 interface SuperAdminConsoleModalProps {
   isOpen: boolean;
@@ -59,8 +65,74 @@ export const SuperAdminConsoleModal: React.FC<SuperAdminConsoleModalProps> = ({
   const isUrdu = language === 'ur';
   const isSuperAdmin = !currentUser || currentUser.role === 'superadmin' || currentUser.username.toLowerCase() === 'lukilion';
 
-  const [activeTab, setActiveTab] = useState<'users' | 'pending' | 'add-admin' | 'add-auditor' | 'add-buyer'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'pending' | 'add-admin' | 'add-auditor' | 'add-buyer' | 'releases'>('users');
   const [users, setUsers] = useState<UserAccount[]>([]);
+  
+  // App Release & Mandatory Update Broadcast State
+  const [releaseVersion, setReleaseVersion] = useState<string>('1.3.0');
+  const [minRequiredVersion, setMinRequiredVersion] = useState<string>('1.3.0');
+  const [isForceUpdate, setIsForceUpdate] = useState<boolean>(true);
+  const [releaseTitleUrdu, setReleaseTitleUrdu] = useState<string>('اہم نئی اپ ڈیٹ دستیاب ہے!');
+  const [releaseTitleEn, setReleaseTitleEn] = useState<string>('Important New Update Available!');
+  const [releaseNotesUrdu, setReleaseNotesUrdu] = useState<string>('نئے فیچرز، تیز رفتار کارکردگی اور ڈیٹا کی خودکار حفاظت شامل کی گئی ہے۔');
+  const [releaseNotesEn, setReleaseNotesEn] = useState<string>('Performance improvements, automated data protection, and latest wholesale catalog rates.');
+  const [apkUrl, setApkUrl] = useState<string>('https://github.com/hassantareen001/orderla-app/releases');
+  const [exeUrl, setExeUrl] = useState<string>('https://github.com/hassantareen001/orderla-app/releases');
+  const [bundleZipUrl, setBundleZipUrl] = useState<string>('');
+  const [isBroadcasting, setIsBroadcasting] = useState<boolean>(false);
+  const [broadcastStatus, setBroadcastStatus] = useState<string | null>(null);
+
+  const handleFetchCurrentRelease = async () => {
+    const live = await fetchLatestAppUpdate();
+    if (live) {
+      setReleaseVersion(live.version || '1.3.0');
+      setMinRequiredVersion(live.minRequiredVersion || '1.3.0');
+      setIsForceUpdate(!!live.forceUpdate);
+      setReleaseTitleUrdu(live.titleUrdu || 'اہم نئی اپ ڈیٹ دستیاب ہے!');
+      setReleaseTitleEn(live.titleEn || 'Important New Update Available!');
+      setReleaseNotesUrdu(live.notesUrdu || '');
+      setReleaseNotesEn(live.notesEn || '');
+      if (live.apkDownloadUrl) setApkUrl(live.apkDownloadUrl);
+      if (live.exeDownloadUrl) setExeUrl(live.exeDownloadUrl);
+      if (live.bundleZipUrl) setBundleZipUrl(live.bundleZipUrl);
+    }
+  };
+
+  const handleBroadcastRelease = async () => {
+    if (!releaseVersion.trim()) {
+      setBroadcastStatus('ورژن نمبر درج کرنا لازمی ہے! (Version is required)');
+      return;
+    }
+
+    setIsBroadcasting(true);
+    setBroadcastStatus(null);
+
+    const newRelease: AppUpdateRelease = {
+      version: releaseVersion.trim(),
+      minRequiredVersion: minRequiredVersion.trim() || releaseVersion.trim(),
+      titleUrdu: releaseTitleUrdu.trim(),
+      titleEn: releaseTitleEn.trim(),
+      notesUrdu: releaseNotesUrdu.trim(),
+      notesEn: releaseNotesEn.trim(),
+      forceUpdate: isForceUpdate,
+      apkDownloadUrl: apkUrl.trim(),
+      exeDownloadUrl: exeUrl.trim(),
+      bundleZipUrl: bundleZipUrl.trim(),
+      onlineWebUrl: 'https://ais-pre-ciqhtg2jqhioit3tt3irkr-204728918642.asia-southeast1.run.app',
+      publishedAt: new Date().toISOString()
+    };
+
+    const success = await broadcastAppUpdate(newRelease);
+    setIsBroadcasting(false);
+
+    if (success) {
+      setBroadcastStatus(isUrdu 
+        ? `نیا ورژن v${newRelease.version} کامیابی سے تمام اینڈرائیڈ اور ڈیسک ٹاپ ڈیوائسز پر براڈکاسٹ کر دیا گیا!` 
+        : `Version v${newRelease.version} broadcasted successfully to all APK & EXE clients!`);
+    } else {
+      setBroadcastStatus(isUrdu ? 'براڈکاسٹ کرنے میں خرابی پیش آئی!' : 'Failed to broadcast update manifest.');
+    }
+  };
   
   const pendingUsers = users.filter((u) => u.status === 'pending');
 
@@ -411,6 +483,24 @@ export const SuperAdminConsoleModal: React.FC<SuperAdminConsoleModalProps> = ({
             <UserPlus className="w-3.5 h-3.5" />
             <span>{isUrdu ? '+ نیا خریدار' : '+ New Buyer'}</span>
           </button>
+
+          {isSuperAdmin && (
+            <button
+              onClick={() => {
+                setActiveTab('releases');
+                setFormStatusMsg(null);
+                handleFetchCurrentRelease();
+              }}
+              className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                activeTab === 'releases'
+                  ? 'neu-btn active text-rose-500'
+                  : 'neu-btn text-[var(--text-main)]'
+              }`}
+            >
+              <Radio className="w-3.5 h-3.5 animate-pulse" />
+              <span>{isUrdu ? 'آن لائن اپ ڈیٹس براڈکاسٹ' : 'Live Update Broadcast'}</span>
+            </button>
+          )}
         </div>
 
         {/* Tab 1: All Users & Permissions Management */}
@@ -857,6 +947,201 @@ export const SuperAdminConsoleModal: React.FC<SuperAdminConsoleModalProps> = ({
                   </span>
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 5: Live App Update & Version Broadcast Center */}
+        {activeTab === 'releases' && (
+          <div className="flex-1 py-3.5 overflow-y-auto space-y-4 pr-1 text-xs">
+            <div className="p-3 rounded-2xl neu-inset-sm space-y-1.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-[var(--text-main)] flex items-center gap-2">
+                  <Radio className="w-4 h-4 text-rose-500 animate-pulse" />
+                  <span>{isUrdu ? 'ریئل ٹائم آن لائن اپ ڈیٹ کنٹرول سینٹر' : 'Real-Time Live Update Control Center'}</span>
+                </span>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-[var(--accent-blue)]/15 text-[var(--accent-blue)]">
+                  Active Build v{APP_CLIENT_VERSION}
+                </span>
+              </div>
+              <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+                {isUrdu
+                  ? 'یہاں سے نیا ورژن براڈکاسٹ کریں۔ تمام چلنے والے اینڈرائیڈ APK اور ونڈوز EXE میں فوری طور پر پاپ اپ ظاہر ہو گا اور لازمی اپ ڈیٹ مکمل ہونے تک آگے بڑھنے کی اجازت نہیں ملے گی۔ صارفین کے تمام ایڈ کیے گئے آئٹمز اور ڈرافٹ شیٹس محفوظ رہیں گی۔'
+                  : 'Broadcast a new version manifest. All installed APKs and EXEs will immediately show a mandatory blocking popup to sync from orderla.ai.studio without losing any added items or drafts.'}
+              </p>
+            </div>
+
+            {broadcastStatus && (
+              <div className="p-3 rounded-2xl neu-raised text-xs font-bold text-[var(--accent-blue)] flex items-center gap-2 border border-[var(--accent-blue)]/30 animate-in fade-in">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                <span>{broadcastStatus}</span>
+              </div>
+            )}
+
+            {/* Version Numbers */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block font-bold text-[var(--text-secondary)] mb-1">
+                  {isUrdu ? 'نیا ریلیز ورژن (Version):' : 'New Release Version:'}
+                </label>
+                <input
+                  type="text"
+                  value={releaseVersion}
+                  onChange={(e) => setReleaseVersion(e.target.value)}
+                  placeholder="e.g. 1.3.0"
+                  className="w-full py-2.5 px-3.5 rounded-2xl neu-input text-xs font-mono font-bold text-[var(--text-main)]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-[var(--text-secondary)] mb-1">
+                  {isUrdu ? 'کم از کم مطلوبہ ورژن (Min Required):' : 'Min Required Version:'}
+                </label>
+                <input
+                  type="text"
+                  value={minRequiredVersion}
+                  onChange={(e) => setMinRequiredVersion(e.target.value)}
+                  placeholder="e.g. 1.3.0"
+                  className="w-full py-2.5 px-3.5 rounded-2xl neu-input text-xs font-mono font-bold text-[var(--text-main)]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-[var(--text-secondary)] mb-1">
+                  {isUrdu ? 'لازمی نفاذ (Force Update):' : 'Force / Blocking Gate:'}
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsForceUpdate(!isForceUpdate)}
+                  className={`w-full py-2.5 px-3.5 rounded-2xl font-bold transition flex items-center justify-between cursor-pointer ${
+                    isForceUpdate
+                      ? 'neu-btn active text-rose-500 border border-rose-500/30'
+                      : 'neu-btn text-emerald-600'
+                  }`}
+                >
+                  <span>{isForceUpdate ? (isUrdu ? 'لازمی (Must Update)' : 'Mandatory') : (isUrdu ? 'اختیاری (Optional)' : 'Optional')}</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10">
+                    {isForceUpdate ? 'BLOCKING' : 'ALLOWED'}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Titles */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-bold text-[var(--text-secondary)] mb-1">
+                  {isUrdu ? 'پاپ اپ عنوان (اردو):' : 'Update Title (Urdu):'}
+                </label>
+                <input
+                  type="text"
+                  value={releaseTitleUrdu}
+                  onChange={(e) => setReleaseTitleUrdu(e.target.value)}
+                  placeholder="اہم نئی اپ ڈیٹ دستیاب ہے!"
+                  className="w-full py-2.5 px-3.5 rounded-2xl neu-input text-xs font-bold text-[var(--text-main)] text-right"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-[var(--text-secondary)] mb-1">
+                  {isUrdu ? 'پاپ اپ عنوان (English):' : 'Update Title (English):'}
+                </label>
+                <input
+                  type="text"
+                  value={releaseTitleEn}
+                  onChange={(e) => setReleaseTitleEn(e.target.value)}
+                  placeholder="Important New Update Available!"
+                  className="w-full py-2.5 px-3.5 rounded-2xl neu-input text-xs font-bold text-[var(--text-main)]"
+                />
+              </div>
+            </div>
+
+            {/* Release Notes */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-bold text-[var(--text-secondary)] mb-1">
+                  {isUrdu ? 'ریلیز نوٹس (اردو):' : 'Release Notes (Urdu):'}
+                </label>
+                <textarea
+                  rows={3}
+                  value={releaseNotesUrdu}
+                  onChange={(e) => setReleaseNotesUrdu(e.target.value)}
+                  placeholder="اس اپ ڈیٹ میں کیا نئی خصوصیات ہیں..."
+                  className="w-full p-3 rounded-2xl neu-input text-xs font-medium text-[var(--text-main)] text-right"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-[var(--text-secondary)] mb-1">
+                  {isUrdu ? 'ریلیز نوٹس (English):' : 'Release Notes (English):'}
+                </label>
+                <textarea
+                  rows={3}
+                  value={releaseNotesEn}
+                  onChange={(e) => setReleaseNotesEn(e.target.value)}
+                  placeholder="Summary of bug fixes and improvements..."
+                  className="w-full p-3 rounded-2xl neu-input text-xs font-medium text-[var(--text-main)]"
+                />
+              </div>
+            </div>
+
+            {/* Download Links */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block font-bold text-[var(--text-secondary)] mb-1">
+                  {isUrdu ? 'Android APK ڈاؤن لوڈ لنک:' : 'Android APK Download URL:'}
+                </label>
+                <input
+                  type="text"
+                  value={apkUrl}
+                  onChange={(e) => setApkUrl(e.target.value)}
+                  placeholder="https://.../orderla.apk"
+                  className="w-full py-2.5 px-3 rounded-2xl neu-input text-[11px] font-mono text-[var(--text-main)]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-[var(--text-secondary)] mb-1">
+                  {isUrdu ? 'Windows EXE ڈاؤن لوڈ لنک:' : 'Windows EXE Download URL:'}
+                </label>
+                <input
+                  type="text"
+                  value={exeUrl}
+                  onChange={(e) => setExeUrl(e.target.value)}
+                  placeholder="https://.../orderla-setup.exe"
+                  className="w-full py-2.5 px-3 rounded-2xl neu-input text-[11px] font-mono text-[var(--text-main)]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-[var(--text-secondary)] mb-1">
+                  {isUrdu ? 'Capgo OTA Bundle Zip (اختیاری):' : 'Capgo OTA Bundle Zip (Optional):'}
+                </label>
+                <input
+                  type="text"
+                  value={bundleZipUrl}
+                  onChange={(e) => setBundleZipUrl(e.target.value)}
+                  placeholder="https://.../bundle.zip"
+                  className="w-full py-2.5 px-3 rounded-2xl neu-input text-[11px] font-mono text-[var(--text-main)]"
+                />
+              </div>
+            </div>
+
+            {/* Broadcast Action Button */}
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={handleBroadcastRelease}
+                disabled={isBroadcasting}
+                className="w-full py-3.5 px-4 rounded-2xl neu-btn-accent text-xs sm:text-sm font-black flex items-center justify-center gap-2 cursor-pointer shadow-lg hover:scale-[1.01] active:scale-[0.99] transition bg-rose-600 text-white"
+              >
+                <Radio className={`w-4 h-4 ${isBroadcasting ? 'animate-spin' : 'animate-pulse'}`} />
+                <span>
+                  {isBroadcasting
+                    ? (isUrdu ? 'براڈکاسٹ کیا جا رہا ہے...' : 'Broadcasting Update...')
+                    : (isUrdu ? `تمام کلائنٹس کو ورژن v${releaseVersion} براڈکاسٹ کریں` : `Broadcast v${releaseVersion} to All APK & EXE Users`)}
+                </span>
+              </button>
             </div>
           </div>
         )}

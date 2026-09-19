@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { WholesaleItem, UserRole, Language, Theme, FilterType, SortKey, SortDirection, UserAccount, PrimaryNavTab } from './types';
+import { WholesaleItem, UserRole, Language, Theme, FilterType, SortKey, SortDirection, UserAccount, PrimaryNavTab, AppUpdateRelease } from './types';
 import { DEFAULT_MASTER_ITEMS, NAV_ROUTES } from './data/masterItems';
 import { OrderLaTopNav } from './components/OrderLaTopNav';
 import { NeumorphicSidebar } from './components/NeumorphicSidebar';
@@ -15,6 +15,7 @@ import { DemandSwiperModal } from './components/DemandSwiperModal';
 import { RoleLoginModal } from './components/RoleLoginModal';
 import { SuperAdminConsoleModal } from './components/SuperAdminConsoleModal';
 import { BackupUpdateModal } from './components/BackupUpdateModal';
+import { ForceUpdateModal } from './components/ForceUpdateModal';
 import { WhatsAppRecipientModal } from './components/WhatsAppRecipientModal';
 import { AccessDeniedModal } from './components/AccessDeniedModal';
 import { PendingApprovalsModal } from './components/PendingApprovalsModal';
@@ -28,7 +29,8 @@ import { Toast } from './components/Toast';
 import { AuthGatewayScreen } from './components/AuthGatewayScreen';
 import { exportWholesaleExcel } from './utils/exportHelpers';
 import { getCurrentUser, hasExportPermission, getStoredUsers, saveStoredUsers, setCurrentUser as persistCurrentUser, logoutUser, getPendingCount } from './utils/authManager';
-import { subscribeToCloudUsers, subscribeToCloudCatalog, fetchCloudCatalog, saveCatalogItemToCloud, deleteCatalogItemFromCloud } from './lib/firebase';
+import { subscribeToCloudUsers, subscribeToCloudCatalog, fetchCloudCatalog, saveCatalogItemToCloud, deleteCatalogItemFromCloud, subscribeToAppUpdates } from './lib/firebase';
+import { initAppUpdateServices, evaluateUpdateStatus, createPreUpdateSafetySnapshot } from './utils/updateManager';
 import { addAuditHistoryEntry } from './utils/historyManager';
 import { generateLiveNotifications } from './utils/notificationsManager';
 import { ChevronDown, RefreshCw } from 'lucide-react';
@@ -284,6 +286,31 @@ export function App() {
   const [isPendingApprovalsOpen, setIsPendingApprovalsOpen] = useState<boolean>(false);
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState<number>(() => getPendingCount());
 
+  // Live App Updates & Mandatory Gatekeeper State
+  const [activeRelease, setActiveRelease] = useState<AppUpdateRelease | null>(null);
+  const [isForceUpdateOpen, setIsForceUpdateOpen] = useState<boolean>(false);
+  const [isUpdateMandatory, setIsUpdateMandatory] = useState<boolean>(false);
+
+  // Initialize Native Update Services and Subscribe to Real-Time Updates from Cloud Firestore
+  useEffect(() => {
+    initAppUpdateServices();
+
+    const unsubUpdates = subscribeToAppUpdates((release) => {
+      setActiveRelease(release);
+      const evalResult = evaluateUpdateStatus(release);
+      if (evalResult.isUpdateAvailable) {
+        setIsUpdateMandatory(evalResult.isMandatory);
+        setIsForceUpdateOpen(true);
+      } else {
+        setIsForceUpdateOpen(false);
+      }
+    });
+
+    return () => {
+      unsubUpdates();
+    };
+  }, []);
+
   // Listen for storage changes across tabs or windows to update pending count
   useEffect(() => {
     const handleStorage = () => {
@@ -390,6 +417,8 @@ export function App() {
         if (currentUser) {
           localStorage.setItem(`wholesale_demand_sheet_user_${currentUser.id}`, JSON.stringify(newItems));
         }
+        // Secure pre-update safety vault automatically
+        createPreUpdateSafetySnapshot();
       } catch (err) {
         console.error('LocalStorage save error', err);
       }
@@ -1435,6 +1464,18 @@ export function App() {
         }}
         onToast={showToast}
       />
+
+      {/* 9. Mandatory Live Update Gatekeeper Modal */}
+      {activeRelease && (
+        <ForceUpdateModal
+          isOpen={isForceUpdateOpen}
+          release={activeRelease}
+          isMandatory={isUpdateMandatory}
+          language={language}
+          onToast={showToast}
+          onDismissOptional={() => setIsForceUpdateOpen(false)}
+        />
+      )}
 
       {/* Mobile Bottom Navigation Bar: full width, 5 options, center home, subtle curve under active tab */}
       <MobileBottomNav

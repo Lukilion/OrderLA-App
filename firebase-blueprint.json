@@ -36,6 +36,25 @@
         "status": { "type": "string", "description": "Stock status indicator" }
       },
       "required": ["id", "name", "cat", "rate", "status"]
+    },
+    "AppUpdateRelease": {
+      "title": "AppUpdateRelease",
+      "description": "Live release versioning, OTA bundle links, and mandatory update signals for APK and EXE",
+      "type": "object",
+      "properties": {
+        "version": { "type": "string", "description": "Semantic release version" },
+        "minRequiredVersion": { "type": "string", "description": "Minimum required version to access the app" },
+        "titleUrdu": { "type": "string", "description": "Update title in Urdu" },
+        "titleEn": { "type": "string", "description": "Update title in English" },
+        "notesUrdu": { "type": "string", "description": "Release notes in Urdu" },
+        "notesEn": { "type": "string", "description": "Release notes in English" },
+        "forceUpdate": { "type": "boolean", "description": "Whether update is strictly mandatory" },
+        "apkDownloadUrl": { "type": "string", "description": "Direct download link for Android APK" },
+        "exeDownloadUrl": { "type": "string", "description": "Direct download link for Windows EXE" },
+        "bundleZipUrl": { "type": "string", "description": "Direct link to Capgo OTA bundle zip" },
+        "publishedAt": { "type": "string", "description": "Publication timestamp" }
+      },
+      "required": ["version", "minRequiredVersion", "forceUpdate"]
     }
   },
   "firestore": {
@@ -54,6 +73,10 @@
     "/audit_history/{entryId}": {
       "schema": "AuditHistoryEntry",
       "description": "Enterprise audit log tracking user changes, rate modifications, and operations"
+    },
+    "/app_updates/{docId}": {
+      "schema": "AppUpdateRelease",
+      "description": "Live app update manifests and OTA sync signals"
     }
   }
 }

@@ -21,6 +21,11 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // App updates and version synchronization
+    match /app_updates/{docId} {
+      allow read, write: if true;
+    }
+
     // Connectivity verification probe
     match /test/{docId} {
       allow read, write: if true;

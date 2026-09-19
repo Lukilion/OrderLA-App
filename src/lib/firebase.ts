@@ -12,7 +12,7 @@ import {
   Unsubscribe
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { UserAccount, WholesaleItem, UserRole, UserApprovalStatus, SavedOrder, AuditHistoryEntry } from '../types';
+import { UserAccount, WholesaleItem, UserRole, UserApprovalStatus, SavedOrder, AuditHistoryEntry, AppUpdateRelease } from '../types';
 import { DEFAULT_USERS } from '../data/defaultUsers';
 import { DEFAULT_MASTER_ITEMS } from '../data/masterItems';
 
@@ -419,4 +419,100 @@ export async function fetchCloudAuditHistory(): Promise<AuditHistoryEntry[]> {
     return [];
   }
 }
+
+// ============================================================================
+// 5. LIVE APP UPDATE & OTA VERSION SYNCHRONIZATION
+// ============================================================================
+
+export const DEFAULT_APP_RELEASE: AppUpdateRelease = {
+  version: '1.2.0',
+  minRequiredVersion: '1.2.0',
+  titleUrdu: 'نیا ورژن دستیاب ہے',
+  titleEn: 'New Version Available',
+  notesUrdu: 'سافٹ ویئر کو جدید ترین آن لائن ورژن سے سنک کریں، تمام آئٹمز اور ریٹس خودکار محفوظ رہیں گے۔',
+  notesEn: 'Sync with online OrderLa system. All added items, saved orders, and draft states are preserved.',
+  forceUpdate: false,
+  apkDownloadUrl: 'https://github.com/hassantareen001/orderla-app/releases',
+  exeDownloadUrl: 'https://github.com/hassantareen001/orderla-app/releases',
+  bundleZipUrl: '',
+  onlineWebUrl: 'https://ais-pre-ciqhtg2jqhioit3tt3irkr-204728918642.asia-southeast1.run.app',
+  publishedAt: new Date().toISOString()
+};
+
+/**
+ * Subscribes to real-time app update release broadcast
+ */
+export function subscribeToAppUpdates(
+  onUpdateReceived: (release: AppUpdateRelease) => void
+): Unsubscribe {
+  const updateDocRef = doc(db, 'app_updates', 'latest');
+
+  return onSnapshot(
+    updateDocRef,
+    (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data() as AppUpdateRelease;
+        onUpdateReceived(data);
+      } else {
+        // Seed default release record
+        seedInitialAppRelease();
+        onUpdateReceived(DEFAULT_APP_RELEASE);
+      }
+    },
+    (err) => {
+      console.warn('[Firebase Firestore] App update subscription fallback to default:', err);
+      onUpdateReceived(DEFAULT_APP_RELEASE);
+    }
+  );
+}
+
+/**
+ * Seeds initial release manifest to Firestore if missing
+ */
+export async function seedInitialAppRelease(): Promise<void> {
+  try {
+    const updateDocRef = doc(db, 'app_updates', 'latest');
+    await setDoc(updateDocRef, DEFAULT_APP_RELEASE, { merge: true });
+    console.log('[Firebase Firestore] Default app update manifest initialized.');
+  } catch (err) {
+    console.warn('[Firebase Firestore] Could not seed app update release:', err);
+  }
+}
+
+/**
+ * Fetches the latest published release manifest from Cloud Firestore
+ */
+export async function fetchLatestAppUpdate(): Promise<AppUpdateRelease | null> {
+  try {
+    const updateDocRef = doc(db, 'app_updates', 'latest');
+    const snap = await getDocFromServer(updateDocRef);
+    if (snap.exists()) {
+      return snap.data() as AppUpdateRelease;
+    }
+    await seedInitialAppRelease();
+    return DEFAULT_APP_RELEASE;
+  } catch (err) {
+    console.warn('[Firebase Firestore] Error fetching app update from cloud:', err);
+    return null;
+  }
+}
+
+/**
+ * Broadcasts a new release update to all installed APKs and EXEs across all devices
+ */
+export async function broadcastAppUpdate(release: AppUpdateRelease): Promise<boolean> {
+  try {
+    const updateDocRef = doc(db, 'app_updates', 'latest');
+    await setDoc(updateDocRef, {
+      ...release,
+      publishedAt: new Date().toISOString()
+    }, { merge: true });
+    console.log(`[Firebase Firestore] Broadcasted app release v${release.version} (force=${release.forceUpdate})`);
+    return true;
+  } catch (err) {
+    console.error('[Firebase Firestore] Failed to broadcast app update:', err);
+    return false;
+  }
+}
+
 

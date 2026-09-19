@@ -119,3 +119,25 @@ export const STATUS_PRESETS: string[] = [
   'تیز فروخت ترین آئٹم',
   'ہفتہ وار ری اسٹاک'
 ];
+
+export interface AppUpdateRelease {
+  version: string;
+  minRequiredVersion: string;
+  titleUrdu: string;
+  titleEn: string;
+  notesUrdu: string;
+  notesEn: string;
+  forceUpdate: boolean;
+  apkDownloadUrl?: string;
+  exeDownloadUrl?: string;
+  bundleZipUrl?: string;
+  onlineWebUrl?: string;
+  publishedAt: string;
+}
+
+export type UpdateCheckResult = {
+  isUpdateAvailable: boolean;
+  isMandatory: boolean;
+  release: AppUpdateRelease;
+};
+

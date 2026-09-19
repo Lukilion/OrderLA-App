@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="orderlaBgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stopColor="#0091FF"/>
+      <stop offset="50%" stopColor="#007BFF"/>
+      <stop offset="100%" stopColor="#0062E3"/>
+    </linearGradient>
+    <linearGradient id="orderlaGlow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.25"/>
+      <stop offset="60%" stopColor="#FFFFFF" stopOpacity="0"/>
+    </linearGradient>
+    <filter id="logoShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" floodColor="#003D8F" floodOpacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Blue Rounded Square App Icon Canvas -->
+  <rect x="8" y="8" width="496" height="496" rx="120" fill="url(#orderlaBgGrad)"/>
+  <rect x="10" y="10" width="492" height="240" rx="116" fill="url(#orderlaGlow)"/>
+
+  <!-- Left Speed Motion Trails -->
+  <g fill="#FFFFFF" opacity="0.95">
+    <rect x="58" y="210" width="56" height="16" rx="8"/>
+    <rect x="36" y="240" width="88" height="16" rx="8"/>
+    <rect x="64" y="270" width="46" height="16" rx="8"/>
+  </g>
+
+  <!-- Truck Cab, Chassis & Circular Hub -->
+  <g fill="#FFFFFF" filter="url(#logoShadow)">
+    <!-- Flatbed Chassis -->
+    <path d="M96 270H336V286C336 290 332 294 328 294H104C100 294 96 290 96 286V270Z"/>
+
+    <!-- Cab Body -->
+    <path d="M320 170H364C370 170 376 173 379 178L420 242C423 247 424 252 424 258V284C424 290 419 294 414 294H320V170Z"/>
+
+    <!-- Cab Window (Blue inside) -->
+    <path d="M336 186H362C366 186 369 188 371 191L397 236C399 239 398 243 395 244C394 245 393 245 391 245H336V186Z" fill="#0074F0"/>
+
+    <!-- Circular Cargo Hub -->
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M188 104C238 104 278 144 278 194C278 244 238 284 188 284C138 284 98 244 98 194C98 144 138 104 188 104ZM188 134C221 134 248 161 248 194C248 227 221 254 188 254C155 254 128 227 128 194C128 161 155 134 188 134Z"/>
+
+    <!-- Rising Checkmark Arrow Piercing Upward -->
+    <path d="M148 184L218 254L332 114L360 138L222 288L122 188L148 184Z"/>
+    <!-- Arrowhead Peak -->
+    <path d="M365 84L362 162L330 130L292 142L365 84Z"/>
+
+    <!-- Rear Wheel -->
+    <circle cx="174" cy="294" r="40"/>
+    <circle cx="174" cy="294" r="18" fill="#0074F0"/>
+
+    <!-- Front Wheel -->
+    <circle cx="374" cy="294" r="40"/>
+    <circle cx="374" cy="294" r="18" fill="#0074F0"/>
+  </g>
+
+  <!-- "OrderLa" Wordmark Typography with Coral-Red Dot -->
+  <text x="256" y="420" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="82" font-weight="900" fill="#FFFFFF" letter-spacing="-1px">OrderLa</text>
+  <!-- Red Accent Dot above La -->
+  <circle cx="362" cy="344" r="12" fill="#FF453A"/>
+</svg>
